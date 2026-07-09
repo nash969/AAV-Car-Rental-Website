@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AAV Car Rental Services</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="site-nav">
+        <a class="brand" href="#home" data-route="landing">
+          <img src="./assets/aav-logo.jpg" alt="AAV Car Rental Services logo" />
+          <span>AAV Car Rental Services</span>
+        </a>
+
+
+        <nav class="public-links">
+          <a href="#home">Home</a>
+          <a href="#vehicles">Vehicles</a>
+          <a href="#about">About</a>
+          <a href="#contact">Contact</a>
+          <button class="nav-button" data-route="login" type="button">Login</button>
+          <button class="nav-button dark" data-route="register" type="button">Register</button>
+        </nav>
+      </header>
+
+
+      <main id="landing" class="view active">
+        <section class="hero" id="home">
+          <div class="hero-copy">
+            <p class="kicker">AI-assisted rental management</p>
+            <h1>Rent Your Perfect Ride with Ease</h1>
+            <p>
+              Premium car rental booking, reservation payments, customer document
+              verification, and vehicle tracking in one elegant web system.
+            </p>
+            <div class="button-row">
+              <button class="primary" data-route="register" type="button">Book Now</button>
+              <a class="secondary" href="#vehicles">Browse Vehicles</a>
+            </div>
+            <div class="trust-row">
+              <span>Taguig City</span>
+              <span>GCash and bank transfer</span>
+              <span>Reservation fee: ₱500/day</span>
+            </div>
+          </div>
+
+
+          <div class="hero-media">
+            <img src="./assets/toyota-suv.jpg" alt="Silver Toyota SUV rental vehicle" />
+            <div class="hero-badge">
+              <img src="./assets/aav-logo.jpg" alt="" />
+              <div>
+                <strong>AAV Car Rental Service</strong>
+                <span>Verified documents. Smooth bookings.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <section class="section" id="vehicles">
+          <div class="section-head">
+            <p class="kicker">Featured fleet</p>
+            <h2>Monochrome showroom, practical rentals.</h2>
+          </div>
+
+
+          <div class="vehicle-grid">
+            <article class="vehicle-card">
+              <img src="./assets/toyota-suv.jpg" alt="Toyota Veloz SUV" />
+              <div class="vehicle-body">
+                <span class="status available">Available</span>
+                <h3>Toyota Veloz</h3>
+                <p>SUV · Automatic · Gasoline · 7 seats</p>
+                <div class="price-row">
+                  <strong>₱3,500/day</strong>
+                  <button type="button" data-route="login">Book Now</button>
+                </div>
+              </div>
+            </article>
+
+
+            <article class="vehicle-card">
+              <img src="./assets/toyota-vios.jpg" alt="Toyota Vios sedan" />
+              <div class="vehicle-body">
+                <span class="status reserved">Reserved</span>
+                <h3>Toyota Vios</h3>
+                <p>Sedan · Automatic · Gasoline · 5 seats</p>
+                <div class="price-row">
+                  <strong>₱2,000/day</strong>
+                  <button type="button" data-route="login">View Details</button>
+                </div>
+              </div>
+            </article>
+
+
+            <article class="vehicle-card">
+              <img src="./assets/toyota-fortuner.jpg" alt="Toyota Fortuner SUV" />
+              <div class="vehicle-body">
+                <span class="status trip">On Trip</span>
+                <h3>Toyota Fortuner</h3>
+                <p>SUV · Automatic · Diesel · 7 seats</p>
+                <div class="price-row">
+                  <strong>₱4,500/day</strong>
+                  <button type="button" data-route="login">View Details</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+
+        <section class="section split" id="about">
+          <div>
+            <p class="kicker">Why choose us</p>
+            <h2>Built for renters, employees, and administrators.</h2>
+            <div class="feature-list">
+              <div>
+                <strong>Fast online booking</strong>
+                <span>Submit customer details, documents, and reservation requests from one flow.</span>
+              </div>
+              <div>
+                <strong>Secure requirements</strong>
+                <span>Driver's license, primary ID, proof of billing, company ID, and selfie holding ID.</span>
+              </div>
+              <div>
+                <strong>Payment verification</strong>
+                <span>GCash and EastWest transfer with receipt upload and status tracking.</span>
+              </div>
+              <div>
+                <strong>Vehicle tracking</strong>
+                <span>Monitor current location, trip status, pickup point, destination, and ETA.</span>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="info-stack">
+            <img src="./assets/requirements.jpg" alt="AAV rental requirements poster" />
+            <div class="quote-card">
+              <strong>AI Customer Assistant</strong>
+              <p>Answers vehicle availability, rental requirements, pricing, booking steps, payments, policies, and FAQs.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+
+      <main id="login" class="view auth-view">
+        <section class="auth-card">
+          <div class="auth-art">
+            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
+            <h1>Welcome back.</h1>
+            <p>Use a demo account to open the Admin, Employee, or Customer dashboard.</p>
+            <div class="credential-box">
+              <span>admin@aavrental.com · Admin@123</span>
+              <span>employee@aavrental.com · Employee@123</span>
+              <span>customer@aavrental.com · Customer@123</span>
+            </div>
+          </div>
+
+
+          <form class="auth-form" id="loginForm">
+            <h2>Login</h2>
+            <label>Email<input id="loginEmail" type="email" value="customer@aavrental.com" required /></label>
+            <label>Password<input id="loginPassword" type="password" value="Customer@123" required /></label>
+            <div class="form-row">
+              <label class="check"><input type="checkbox" checked /> Remember Me</label>
+              <a href="#">Forgot Password?</a>
+            </div>
+            <button class="primary full" type="submit">Login</button>
+            <p>New customer? <button class="link-button" data-route="register" type="button">Create an account</button></p>
+          </form>
+        </section>
+      </main>
+
+
+      <main id="register" class="view auth-view">
+        <section class="register-card">
+          <div class="section-head compact">
+            <p class="kicker">Customer registration</p>
+            <h1>Create your AAV rental account</h1>
+            <p>Customer account creation only. Upload the required verification documents before booking.</p>
+          </div>
+
+
+          <form class="register-form">
+            <label>First Name<input type="text" placeholder="Juan" /></label>
+            <label>Last Name<input type="text" placeholder="Dela Cruz" /></label>
+            <label>Email<input type="email" placeholder="customer@email.com" /></label>
+            <label>Mobile Number<input type="tel" placeholder="+639274589432" /></label>
+            <label class="wide">Address<input type="text" placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City" /></label>
+            <label>Driver's License Number<input type="text" placeholder="N01-23-456789" /></label>
+            <label>Password<input type="password" /></label>
+            <label>Confirm Password<input type="password" /></label>
+            <label>Upload Government ID<input type="file" /></label>
+            <label>Upload Driver's License<input type="file" /></label>
+            <label>Upload Selfie Holding ID<input type="file" /></label>
+            <button class="primary wide" type="button" data-route="login">Create Account</button>
+          </form>
+        </section>
+      </main>
+
+
+      <main id="portal" class="view portal">
+        <aside class="sidebar">
+          <div class="sidebar-brand">
+            <img src="./assets/aav-logo.jpg" alt="" />
+            <div>
+              <strong>AAV System</strong>
+              <span id="roleLabel">Customer</span>
+            </div>
+          </div>
+          <nav id="sideNav" class="side-nav"></nav>
+        </aside>
+
+
+        <section class="workspace">
+          <header class="workspace-top">
+            <div>
+              <p class="kicker" id="workspaceKicker">Dashboard</p>
+              <h1 id="workspaceTitle">Customer Dashboard</h1>
+            </div>
+            <div class="top-actions">
+              <button class="secondary small" data-panel="notifications" type="button">Notifications</button>
+              <button class="primary small" data-route="landing" type="button">Logout</button>
+            </div>
+          </header>
+          <div id="workspaceContent"></div>
+        </section>
+      </main>
+
+
+      <button class="chat-fab" id="chatFab" type="button">AI</button>
+
+
+      <section class="chat-window" id="chatWindow">
+        <header>
+          <div>
+            <strong>AI Customer Assistant</strong>
+            <span>Ask about vehicles, booking, payments, and policies.</span>
+          </div>
+          <button id="chatClose" type="button">×</button>
+        </header>
+
+
+        <div class="chat-log" id="chatLog">
+          <p class="bot">
+            Hi! I can help with available vehicles, rental requirements, pricing,
+            booking, payment methods, policies, and FAQs.
+          </p>
+        </div>
+
+
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" placeholder="What SUVs are available?" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </div>
+
+
+    <footer class="footer" id="contact">
+      <div>
+        <strong>AAV Car Rental Services</strong>
+        <span>46 Pag-asa St., Brgy. Katuparan, Taguig City</span>
+      </div>
+      <div>
+        <span>Contact: +639274589432</span>
+        <span>GCash: 09999118689 · Abigail De Mesa</span>
+      </div>
+    </footer>
+
+
+    <script src="script.js"></script>
+  </body>
+</html>
+
