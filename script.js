@@ -113,9 +113,9 @@ const vehicleCards = () => `
     <select><option>Availability</option><option>Available</option><option>Reserved</option></select>
   </div>
   <div class="vehicle-grid">
-    ${vehicleCard("./assets/toyota-suv.jpg", "Toyota Fortuner", "SUV", "Automatic", "Diesel", "7 seats", "₱4,500/day", "Available")}
+    ${vehicleCard("./assets/toyota-fortuner.jpg", "Toyota Fortuner", "SUV", "Automatic", "Diesel", "7 seats", "₱4,500/day", "Available")}
     ${vehicleCard("./assets/toyota-vios.jpg", "Toyota Vios", "Sedan", "Automatic", "Gasoline", "5 seats", "₱2,000/day", "Reserved")}
-    ${vehicleCard("./assets/toyota-suv.jpg", "Toyota Rush", "SUV", "Automatic", "Gasoline", "7 seats", "₱3,500/day", "Available")}
+    ${vehicleCard("./assets/toyota-suv.jpg", "Toyota Veloz", "SUV", "Automatic", "Gasoline", "7 seats", "₱3,500/day", "Available")}
   </div>`;
 
 
@@ -155,9 +155,9 @@ const panels = {
   customer: {
     dashboard: () => `${metrics([["Active Bookings", "2"], ["Pending Payments", "1"], ["Completed Rentals", "8"], ["Reward Points", "420"]])}
       <div class="dashboard-grid"><section class="panel"><h3>Featured Cars</h3>${vehicleCards()}</section>
-      <section class="panel"><h3>Upcoming Reservations</h3><div class="mini-list"><div><strong>Toyota Rush</strong><span>Jul 16 - Jul 20</span></div><div><strong>Toyota Vios</strong><span>Pending approval</span></div></div><h3>Recent Activity</h3><div class="mini-list"><div><span>Payment receipt uploaded</span><strong>Today</strong></div><div><span>Booking approved</span><strong>Yesterday</strong></div></div></section></div>`,
+      <section class="panel"><h3>Upcoming Reservations</h3><div class="mini-list"><div><strong>Toyota Veloz</strong><span>Jul 16 - Jul 20</span></div><div><strong>Toyota Vios</strong><span>Pending approval</span></div></div><h3>Recent Activity</h3><div class="mini-list"><div><span>Payment receipt uploaded</span><strong>Today</strong></div><div><span>Booking approved</span><strong>Yesterday</strong></div></div></section></div>`,
     vehicles: vehicleCards,
-    bookings: () => `<div class="booking-layout"><section class="panel"><h3>Booking Form</h3><div class="form-grid"><label>Vehicle<select><option>Toyota Rush</option><option>Toyota Vios</option></select></label><label>Pickup Date<input type="date" value="2026-07-16"></label><label>Return Date<input type="date" value="2026-07-20"></label><label>Pickup Location<input value="AAV Taguig Office"></label><label>Return Location<input value="AAV Taguig Office"></label><label>Rental Duration<input value="4 days"></label><label>Total Cost<input value="₱14,000"></label><button class="primary wide" type="button">Submit Booking</button></div></section>${bookingSummary()}</div>${table("Booking Status", ["Vehicle", "Dates", "Status"], [["Toyota Rush", "Jul 16 - Jul 20", "<span class='status reserved'>Pending</span>"], ["Toyota Vios", "Jun 02 - Jun 04", "<span class='status available'>Completed</span>"]])}`,
+    bookings: () => `<div class="booking-layout"><section class="panel"><h3>Booking Form</h3><div class="form-grid"><label>Vehicle<select><option>Toyota Veloz</option><option>Toyota Vios</option></select></label><label>Pickup Date<input type="date" value="2026-07-16"></label><label>Return Date<input type="date" value="2026-07-20"></label><label>Pickup Location<input value="AAV Taguig Office"></label><label>Return Location<input value="AAV Taguig Office"></label><label>Rental Duration<input value="4 days"></label><label>Total Cost<input value="₱14,000"></label><button class="primary wide" type="button">Submit Booking</button></div></section>${bookingSummary()}</div>${table("Booking Status", ["Vehicle", "Dates", "Status"], [["Toyota Rush", "Jul 16 - Jul 20", "<span class='status reserved'>Pending</span>"], ["Toyota Vios", "Jun 02 - Jun 04", "<span class='status available'>Completed</span>"]])}`,
     payments: () => paymentPanel(),
     tracking: () => trackingPanel(),
     assistant: () => `<section class="panel"><h3>AI Customer Assistant</h3><p>Use the floating assistant in the lower-right corner. Try asking “What SUVs are available?” or “What documents are required?”</p></section>`,
@@ -165,8 +165,8 @@ const panels = {
     profile: () => profilePanel("Customer")
   },
   employee: {
-    dashboard: () => `${metrics([["Today's Reservations", "7"], ["Pending Bookings", "12"], ["Active Rentals", "9"], ["Vehicles Available", "18"], ["Vehicles on Trip", "6"], ["Payments Received", "₱58K"]])}<div class="dashboard-grid">${table("Recent Reservations", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Rush", "Approved"], ["Maria S.", "Toyota Vios", "Pending"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Payments", ["Customer", "Method", "Status"], [["Juan D.", "GCash", "Verified"], ["Maria S.", "EastWest", "Pending"], ["Ken A.", "GCash", "Verified"]])}</div>`,
-    reservations: () => table("Reservations", ["Booking ID", "Customer", "Vehicle", "Status"], [["BK-1024", "Juan Dela Cruz", "Toyota Rush", "Pending"], ["BK-1025", "Maria Santos", "Toyota Vios", "Approved"], ["BK-1026", "Ken Alvarez", "Fortuner", "Ongoing"]]),
+    dashboard: () => `${metrics([["Today's Reservations", "7"], ["Pending Bookings", "12"], ["Active Rentals", "9"], ["Vehicles Available", "18"], ["Vehicles on Trip", "6"], ["Payments Received", "₱58K"]])}<div class="dashboard-grid">${table("Recent Reservations", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Veloz", "Approved"], ["Maria S.", "Toyota Vios", "Pending"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Payments", ["Customer", "Method", "Status"], [["Juan D.", "GCash", "Verified"], ["Maria S.", "EastWest", "Pending"], ["Ken A.", "GCash", "Verified"]])}</div>`,
+    reservations: () => table("Reservations", ["Booking ID", "Customer", "Vehicle", "Status"], [["BK-1024", "Juan Dela Cruz", "Toyota Toyota Veloz", "Pending"], ["BK-1025", "Maria Santos", "Toyota Vios", "Approved"], ["BK-1026", "Ken Alvarez", "Fortuner", "Ongoing"]]),
     customers: () => table("Customer Requests", ["Customer", "Requirement", "Status"], [["Juan D.", "Driver's license", "Verified"], ["Maria S.", "Payment receipt", "Review"], ["Ken A.", "Selfie holding ID", "Verified"]]),
     vehicles: vehicleCards,
     payments: () => paymentPanel(),
@@ -176,7 +176,7 @@ const panels = {
     profile: () => profilePanel("Employee")
   },
   admin: {
-    dashboard: () => `${metrics([["Total Revenue", "₱428K"], ["Total Vehicles", "32"], ["Active Rentals", "9"], ["Pending Reservations", "12"], ["Customer Growth", "+18%"], ["Most Rented", "Toyota Vios"]])}${charts()}<div class="dashboard-grid">${table("Recent Bookings", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Rush", "Pending"], ["Maria S.", "Vios", "Approved"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Customers", ["Name", "Mobile", "Status"], [["Juan Dela Cruz", "+639274589432", "Verified"], ["Maria Santos", "+639991234567", "New"], ["Ken Alvarez", "+639181112222", "Active"]])}</div>`,
+    dashboard: () => `${metrics([["Total Revenue", "₱428K"], ["Total Vehicles", "32"], ["Active Rentals", "9"], ["Pending Reservations", "12"], ["Customer Growth", "+18%"], ["Most Rented", "Toyota Vios"]])}${charts()}<div class="dashboard-grid">${table("Recent Bookings", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Veloz", "Pending"], ["Maria S.", "Vios", "Approved"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Customers", ["Name", "Mobile", "Status"], [["Juan Dela Cruz", "+639274589432", "Verified"], ["Maria Santos", "+639991234567", "New"], ["Ken Alvarez", "+639181112222", "Active"]])}</div>`,
     employees: () => table("Employees", ["Name", "Role", "Status"], [["Abigail De Mesa", "Manager", "Active"], ["AAV Staff", "Employee", "Active"]]),
     customers: () => table("Customers", ["Name", "License", "Rentals"], [["Juan Dela Cruz", "N01-23-456789", "4"], ["Maria Santos", "N02-45-789123", "2"]]),
     "vehicle-management": () => `<section class="panel"><h3>Vehicle Information</h3><div class="form-grid"><label>Plate Number<input value="NJG 5062"></label><label>Vehicle Name<input value="Toyota Vios"></label><label>Brand<input value="Toyota"></label><label>Model<input value="Vios"></label><label>Year<input value="2024"></label><label>Color<input value="Silver"></label><label>Fuel Type<select><option>Gasoline</option><option>Diesel</option></select></label><label>Transmission<select><option>Automatic</option><option>Manual</option></select></label><label>Seating Capacity<input value="5"></label><label>Rental Price<input value="₱2,000/day"></label><label>Availability<select><option>Available</option><option>Reserved</option><option>On Trip</option><option>Maintenance</option></select></label><label>Upload Vehicle Images<input type="file"></label><button class="primary wide" type="button">Save Vehicle</button></div></section>${vehicleCards()}`,
@@ -192,7 +192,7 @@ const panels = {
 
 
 function bookingSummary() {
-  return `<aside class="panel"><h3>Booking Summary</h3><div class="summary-line"><span>Vehicle</span><strong>Toyota Rush</strong></div><div class="summary-line"><span>Duration</span><strong>4 days</strong></div><div class="summary-line"><span>Reservation Fee</span><strong>₱2,000</strong></div><div class="summary-line"><span>Total Cost</span><strong>₱14,000</strong></div><p><span class="status reserved">Pending</span> Approval required before pickup.</p></aside>`;
+  return `<aside class="panel"><h3>Booking Summary</h3><div class="summary-line"><span>Vehicle</span><strong>Toyota Veloz</strong></div><div class="summary-line"><span>Duration</span><strong>4 days</strong></div><div class="summary-line"><span>Reservation Fee</span><strong>₱2,000</strong></div><div class="summary-line"><span>Total Cost</span><strong>₱14,000</strong></div><p><span class="status reserved">Pending</span> Approval required before pickup.</p></aside>`;
 }
 
 
@@ -207,7 +207,7 @@ function trackingPanel() {
 
 
 function notificationsPanel() {
-  return `<section class="panel"><h3>Notifications</h3><div class="mini-list"><div><strong>Booking Approved</strong><span>Toyota Rush reservation confirmed.</span></div><div><strong>Booking Rejected</strong><span>One request needs updated documents.</span></div><div><strong>Payment Verified</strong><span>GCash receipt has been verified.</span></div><div><strong>Vehicle Returned</strong><span>Toyota Vios marked returned.</span></div><div><strong>Account Updates</strong><span>Profile verification completed.</span></div></div></section>`;
+  return `<section class="panel"><h3>Notifications</h3><div class="mini-list"><div><strong>Booking Approved</strong><span>Toyota Veloz reservation confirmed.</span></div><div><strong>Booking Rejected</strong><span>One request needs updated documents.</span></div><div><strong>Payment Verified</strong><span>GCash receipt has been verified.</span></div><div><strong>Vehicle Returned</strong><span>Toyota Vios marked returned.</span></div><div><strong>Account Updates</strong><span>Profile verification completed.</span></div></div></section>`;
 }
 
 
@@ -258,9 +258,9 @@ function addChat(type, text) {
 
 function aiReply(text) {
   const q = text.toLowerCase();
-  if (q.includes("suv")) return "Currently available SUVs include Toyota Fortuner, Mitsubishi Montero Sport, and Ford Everest. The Toyota Rush is also listed as available in this prototype.";
+  if (q.includes("suv")) return "Currently available SUVs include Toyota Fortuner, Mitsubishi Montero Sport, and Ford Everest. The Toyota Veloz is also listed as available in this prototype.";
   if (q.includes("document") || q.includes("require")) return "Please upload a valid government ID, driver's license, proof of billing, company ID if applicable, and a selfie while holding your ID. You may also need the QR code from the LTO-LTMS portal.";
-  if (q.includes("price") || q.includes("rate") || q.includes("cost")) return "Sample daily rates are Toyota Vios at ₱2,000/day, Toyota Rush at ₱3,500/day, and Toyota Fortuner at ₱4,500/day. A ₱500/day reservation fee is deductible from the total rent amount.";
+  if (q.includes("price") || q.includes("rate") || q.includes("cost")) return "Sample daily rates are Toyota Vios at ₱2,000/day, Toyota Veloz at ₱3,500/day, and Toyota Fortuner at ₱4,500/day. A ₱500/day reservation fee is deductible from the total rent amount.";
   if (q.includes("book")) return "To book, create a customer account, choose a vehicle, submit pickup and return details, upload requirements, pay the reservation fee, then wait for approval.";
   if (q.includes("payment") || q.includes("gcash") || q.includes("bank")) return "Payment methods include GCash 09999118689 and EastWest bank transfer 200066882957 under Abigail De Mesa. Upload a receipt so staff can verify it.";
   if (q.includes("policy") || q.includes("cancel") || q.includes("refund")) return "The reservation fee is deductible from the total rental amount but is forfeited if the renter cancels the booking.";
