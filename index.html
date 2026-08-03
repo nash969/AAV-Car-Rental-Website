@@ -42,7 +42,7 @@
             <div class="trust-row">
               <span>Taguig City</span>
               <span>GCash and bank transfer</span>
-              <span>Reservation fee: ₱500/day</span>
+              <opan>Reservation fee: ₱500/day</opan>
             </div>
           </div>
 
@@ -186,19 +186,19 @@
           </div>
 
 
-          <form class="register-form">
-            <label>First Name<input type="text" placeholder="Juan" /></label>
-            <label>Last Name<input type="text" placeholder="Dela Cruz" /></label>
-            <label>Email<input type="email" placeholder="customer@email.com" /></label>
-            <label>Mobile Number<input type="tel" placeholder="+639274589432" /></label>
+          <form class="register-form" id="registerForm">
+            <label>First Name<input id="firstName" type="text" placeholder="Juan" /></label>
+            <label>Last Name<input id="lastName" type="text" placeholder="Dela Cruz" /></label>
+            <label>Email<input id="registerEmail" type="email" placeholder="customer@email.com" /></label>
+            <label>Mobile Number<input id="registerPhone" type="tel" placeholder="+639274589432" /></label>
             <label class="wide">Address<input type="text" placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City" /></label>
             <label>Driver's License Number<input type="text" placeholder="N01-23-456789" /></label>
-            <label>Password<input type="password" /></label>
+            <label>Password<input id="registerPassword" type="password" /></label>
             <label>Confirm Password<input type="password" /></label>
             <label>Upload Government ID<input type="file" /></label>
             <label>Upload Driver's License<input type="file" /></label>
             <label>Upload Selfie Holding ID<input type="file" /></label>
-            <button class="primary wide" type="button" data-route="login">Create Account</button>
+            <button class="primary wide" type="submit">Create Account</button>
           </form>
         </section>
       </main>
@@ -225,7 +225,7 @@
             </div>
             <div class="top-actions">
               <button class="secondary small" data-panel="notifications" type="button">Notifications</button>
-              <button class="primary small" data-route="landing" type="button">Logout</button>
+            <button class="primary small" data-action="logout" type="button">Logout</button>
             </div>
           </header>
           <div id="workspaceContent"></div>
