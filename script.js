@@ -229,7 +229,7 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
 async function openPortal(role) {
   currentRole = role;
   await getUnreadNotificationCount();
-  roleLabel.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+  roleLabel.textContent = currentUser?.name || role.charAt(0).toUpperCase() + role.slice(1);
 
   sideNav.innerHTML = roleMenus[role].map(([id, label, iconId]) => `
     <button type="button" data-panel="${id}">
@@ -306,7 +306,9 @@ async function vehicleCards() {
         capitalize(car.transmission),
         capitalize(car.fuel_type),
         car.seats + " seats",
-        "₱" + Number(car.price_per_day).toLocaleString() + "/day",
+        car.rates && car.rates.length > 0
+        ? "Starts at ₱" + Math.min(...car.rates.map(rate => Number(rate.price))).toLocaleString("en-PH")
+        : "Rate unavailable",
         car.available ? "Available" : "Reserved"
         )
       ).join("")
@@ -346,6 +348,51 @@ function charts() {
     <section class="chart-card"><h3>Monthly Revenue Chart</h3><div class="chart-bars"><span style="height:44%"></span><span style="height:62%"></span><span style="height:51%"></span><span style="height:78%"></span><span style="height:86%"></span><span style="height:68%"></span></div></section>
     <section class="chart-card"><h3>Vehicle Availability Chart</h3><div class="donut"></div></section>
   </div>`;
+}
+
+function adminCharts(payments, cars, bookings) {
+
+  const available = cars.filter(car => Boolean(car.available)).length;
+  const unavailable = cars.length - available;
+
+  const total = cars.length || 1;
+
+  const availablePercent = (available / total) * 100;
+
+  return `
+    <div class="dashboard-grid">
+
+      <section class="chart-card">
+        <h3>Monthly Revenue Chart</h3>
+        <p class="form-help">
+          Revenue chart will use approved payment records.
+        </p>
+      </section>
+
+      <section class="chart-card">
+        <h3>Vehicle Availability</h3>
+
+        <div class="mini-list">
+          <div>
+            <span>Available</span>
+            <strong>${available}</strong>
+          </div>
+
+          <div>
+            <span>Unavailable / Reserved</span>
+            <strong>${unavailable}</strong>
+          </div>
+
+          <div>
+            <span>Availability Rate</span>
+            <strong>${availablePercent.toFixed(0)}%</strong>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  `;
 }
 
 
@@ -668,10 +715,98 @@ const panels = {
     profile: () => profilePanel("Employee")
   },
   admin: {
-    dashboard: () => `${metrics([["Total Revenue", "₱428K"], ["Total Vehicles", "32"], ["Active Rentals", "9"], ["Pending Reservations", "12"], ["Customer Growth", "+18%"], ["Most Rented", "Toyota Vios"]])}${charts()}<div class="dashboard-grid">${table("Recent Bookings", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Veloz", "Pending"], ["Maria S.", "Vios", "Approved"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Customers", ["Name", "Mobile", "Status"], [["Juan Dela Cruz", "+639274589432", "Verified"], ["Maria Santos", "+639991234567", "New"], ["Ken Alvarez", "+639181112222", "Active"]])}</div>`,
-    employees: () => table("Employees", ["Name", "Role", "Status"], [["Abigail De Mesa", "Manager", "Active"], ["AAV Staff", "Employee", "Active"]]),
-    customers: () => table("Customers", ["Name", "License", "Rentals"], [["Juan Dela Cruz", "N01-23-456789", "4"], ["Maria Santos", "N02-45-789123", "2"]]),
-"vehicle-management": async () => {
+    dashboard: async () => {
+      const cars = await getCars();
+      const bookings = await apiFetch("/bookings");
+      const payments = await apiFetch("/payments");
+
+      const totalVehicles = cars.length;
+
+      const availableVehicles = cars.filter(car =>
+        Boolean(car.available)
+      ).length;
+
+      const pendingReservations = bookings.filter(booking =>
+        booking.status?.toLowerCase() === "pending"
+      ).length;
+
+      const activeRentals = bookings.filter(booking =>
+        ["confirmed", "ongoing"].includes(
+          booking.status?.toLowerCase()
+        )
+      ).length;
+
+      const pendingPayments = payments.filter(payment =>
+        payment.status === "pending"
+      ).length;
+
+      const approvedRevenue = payments
+        .filter(payment => payment.status === "approved")
+        .reduce((total, payment) => total + Number(payment.amount || 0), 0);
+
+      const recentBookings = bookings
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5)
+        .map(booking => [
+          booking.user?.name || "Customer",
+          booking.car
+            ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+            : "Vehicle unavailable",
+          capitalize(booking.status || "pending")
+        ]);
+
+      return `
+        ${metrics([
+          ["Approved Payments", formatPeso(approvedRevenue)],
+          ["Total Vehicles", totalVehicles],
+          ["Available Vehicles", availableVehicles],
+          ["Active Rentals", activeRentals],
+          ["Pending Reservations", pendingReservations],
+          ["Pending Payments", pendingPayments]
+        ])}
+
+        ${adminCharts(payments, cars, bookings)}
+
+        ${table(
+          "Recent Bookings",
+          ["Customer", "Vehicle", "Status"],
+          recentBookings.length
+            ? recentBookings
+            : [["—", "No bookings yet", "—"]]
+        )}
+      `;
+    },
+
+    employees: async () => {
+      return table(
+        "Employees",
+        ["Name", "Email", "Mobile", "Role"],
+        [
+          ["—", "No employees found", "—", "—"]
+        ]
+      );
+    },
+
+    customers: async () => {
+
+      const customers = await apiFetch("/customers");
+
+      const rows = customers.map(customer => [
+        customer.name,
+        customer.email,
+        customer.phone || "—",
+        capitalize(customer.role || "customer")
+      ]);
+
+      return table(
+        "Customers",
+        ["Name", "Email", "Mobile", "Role"],
+        rows.length
+          ? rows
+          : [["—", "No customers found", "—", "—"]]
+      );
+    },
+    "vehicle-management": async () => {
 
   const carsHTML = await vehicleCards();
 
@@ -733,14 +868,30 @@ const panels = {
 
       const rows = bookings.map(booking => [
         "BK-" + booking.id,
-        booking.user.name,
-        booking.car.brand + " " + booking.car.model,
-        booking.status
+
+        booking.user?.name || "Unknown customer",
+
+        booking.car
+          ? capitalize(booking.car.brand) + " " + capitalize(booking.car.model)
+          : "Vehicle unavailable",
+
+        new Date(booking.pickup_date).toLocaleDateString("en-PH"),
+
+        new Date(booking.return_date).toLocaleDateString("en-PH"),
+
+        capitalize(booking.status || "pending")
       ]);
 
       return table(
         "Reservations",
-        ["Booking ID", "Customer", "Vehicle", "Status"],
+        [
+          "Booking ID",
+          "Customer",
+          "Vehicle",
+          "Pickup",
+          "Return",
+          "Status"
+        ],
         rows
       );
     },
@@ -837,11 +988,38 @@ async function customerPaymentPanel(payments) {
 
   return `<div class="payment-layout">
     <section class="panel">
-      <h3>1. Scan or transfer to AAV</h3>
+      <h3>1. Scan to Pay</h3>
+
       <div class="payment-methods">
-        <div><strong>GCash</strong><span>Account name: Abigail De Mesa</span><span>Number: 0999 911 8689</span></div>
-        <div><strong>Bank transfer</strong><span>EastWest Bank</span><span>Account name: Abigail De Mesa</span><span>Account no.: 200066882957</span></div>
+
+        <div class="payment-qr-card">
+          <strong>GCash</strong>
+
+          <img
+            src="./assets/gcash-qr.jpg"
+            alt="GCash QR Code"
+            class="payment-qr"
+          >
+
+          <span>Scan the QR code to pay via GCash.</span>
+        </div>
+
+        <div class="payment-qr-card">
+          <strong>Bank Transfer</strong>
+
+          <img
+            src="./assets/eastwest-qr.jpg"
+            alt="EastWest Bank QR Code"
+            class="payment-qr"
+          >
+
+          <span>Scan the QR code to pay via bank transfer.</span>
+        </div>
+
       </div>
+      <p class="payment-reminder">
+      <strong>Reminder:</strong> Please verify the payment details shown in the QR code before sending your payment.
+      </p>
       <p class="form-help">Pay the reservation fee shown for your booking, then upload a clear screenshot or photo of the successful transaction. The admin verifies it before approving the reservation.</p>
       <h3>2. Send payment confirmation</h3>
       <form id="paymentForm" class="form-grid" onsubmit="submitPayment(event)">
@@ -856,12 +1034,7 @@ async function customerPaymentPanel(payments) {
         <button class="primary wide" type="submit" ${payableBookings.length ? "" : "disabled"}>Send confirmation to admin</button>
       </form>
     </section>
-    <aside class="panel payment-reference">
-      <h3>Scan to pay</h3>
-      <img src="./assets/payment-options.jpg" alt="GCash and bank transfer QR codes" onerror="this.hidden=true">
-      <p>Add the GCash and bank QR image as <code>assets/payment-options.jpg</code>. Customers can scan it directly from this screen.</p>
-      <p><strong>Payment status:</strong> Payment proofs stay <em>For verification</em> until an admin checks and approves them.</p>
-    </aside>
+
   </div>${table("My payment confirmations", ["Submitted", "Booking", "Method", "Amount", "Status"], history.length ? history : [["—", "No confirmations yet", "—", "—", "—"]])}`;
 }
 
@@ -1035,7 +1208,44 @@ function reportsPanel() {
 
 
 function profilePanel(role) {
-  return `<section class="panel"><h3>${role} Profile</h3><div class="form-grid"><label>Name<input value="${role === "Customer" ? "AAV Customer" : role === "Admin" ? "System Admin" : "AAV Employee"}"></label><label>Email<input value="${role.toLowerCase()}@aavrental.com"></label><label>Mobile<input value="+639274589432"></label><label>Address<input value="46 Pag-asa St., Brgy. Katuparan, Taguig City"></label><button class="primary wide" type="button">Save Profile</button></div></section>`;
+
+  const name = currentUser?.name || "";
+  const email = currentUser?.email || "";
+  const phone = currentUser?.phone || "";
+
+  return `
+    <section class="panel">
+      <h3>${role} Profile</h3>
+
+      <div class="form-grid">
+
+        <label>
+          Name
+          <input value="${name}" readonly>
+        </label>
+
+        <label>
+          Email
+          <input value="${email}" readonly>
+        </label>
+
+        <label>
+          Mobile
+          <input value="${phone}" readonly>
+        </label>
+
+        <label>
+          Address
+          <input value="" placeholder="No address added yet">
+        </label>
+
+        <button class="primary wide" type="button">
+          Save Profile
+        </button>
+
+      </div>
+    </section>
+  `;
 }
 
 
@@ -1055,34 +1265,205 @@ const chatLog = document.querySelector("#chatLog");
 
 chatFab.addEventListener("click", () => chatWindow.classList.toggle("open"));
 chatClose.addEventListener("click", () => chatWindow.classList.remove("open"));
-chatForm.addEventListener("submit", event => {
+chatForm.addEventListener("submit", async event => {
+
   event.preventDefault();
+
   const question = chatInput.value.trim();
+
   if (!question) return;
+
   addChat("user", question);
-  addChat("bot", aiReply(question));
+
   chatInput.value = "";
+
+  const lowerQuestion = question.toLowerCase();
+
+  if (
+    lowerQuestion.includes("requirement") ||
+    lowerQuestion.includes("requirements") ||
+    lowerQuestion.includes("ano ang kailangan?") ||
+    lowerQuestion.includes("anong mga kailangan?") ||
+    lowerQuestion.includes("document") ||
+    lowerQuestion.includes("documents") ||
+    lowerQuestion.includes("id kailangan") ||
+    lowerQuestion.includes("kailangan dalhin")
+  ) {
+    addChat("bot", "Here are the rental requirements:");
+    addChatImage("assets/requirements.jpg");
+    return;
+  }
+
+  const localReply = aiReply(question);
+
+  if (localReply) {
+    addChat("bot", localReply);
+    return;
+  }
+
+  addChat("bot", "Typing...");
+
+  try {
+
+    const response = await apiFetch("/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        message: question
+      })
+    });
+
+    console.log("Gemini Response:", response);
+
+    const botReply =
+      response.candidates?.[0]?.content?.parts?.[0]?.text
+      || "Sorry, I couldn't generate a response.";
+
+    chatLog.lastElementChild.remove();
+
+    addChat("bot", botReply);
+
+  } catch (error) {
+
+    chatLog.lastElementChild.remove();
+
+    addChat("bot", "Sorry, something went wrong while contacting the AI.");
+
+    console.error(error);
+
+  }
+
 });
 
 
 function addChat(type, text) {
   const p = document.createElement("p");
   p.className = type;
-  p.textContent = text;
+
+  if (type === "bot") {
+    let formattedText = text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/^\*\s+/gm, "• ")
+      .replace(/^-\s+/gm, "• ")
+      .replace(/\n{2,}/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+
+    p.innerHTML = formattedText;
+  } else {
+    p.textContent = text;
+  }
+
   chatLog.appendChild(p);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function addChatImage(imagePath) {
+  const div = document.createElement("div");
+  div.className = "bot";
+
+  const img = document.createElement("img");
+  img.src = imagePath;
+  img.alt = "AAV Car Rental Requirements";
+
+  img.style.maxWidth = "100%";
+  img.style.borderRadius = "10px";
+  img.style.marginTop = "8px";
+
+  div.appendChild(img);
+  chatLog.appendChild(div);
+
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 
 function aiReply(text) {
-  const q = text.toLowerCase();
-  if (q.includes("suv")) return "Currently available SUVs include Toyota Fortuner, Mitsubishi Montero Sport, and Ford Everest. The Toyota Veloz is also listed as available in this prototype.";
-  if (q.includes("document") || q.includes("require")) return "Please upload a valid government ID, driver's license, proof of billing, company ID if applicable, and a selfie while holding your ID. You may also need the QR code from the LTO-LTMS portal.";
-  if (q.includes("price") || q.includes("rate") || q.includes("cost")) return "Sample daily rates are Toyota Vios at ₱2,000/day, Toyota Veloz at ₱3,500/day, and Toyota Fortuner at ₱4,500/day. A ₱500/day reservation fee is deductible from the total rent amount.";
-  if (q.includes("book")) return "To book, create a customer account, choose a vehicle, submit pickup and return details, upload requirements, pay the reservation fee, then wait for approval.";
-  if (q.includes("payment") || q.includes("gcash") || q.includes("bank")) return "Payment methods include GCash 09999118689 and EastWest bank transfer 200066882957 under Abigail De Mesa. Upload a receipt so staff can verify it.";
-  if (q.includes("policy") || q.includes("cancel") || q.includes("refund")) return "The reservation fee is deductible from the total rental amount but is forfeited if the renter cancels the booking.";
-  return "I can answer questions about available vehicles, rental requirements, rental pricing, booking process, payment methods, rental policies, and frequently asked questions.";
+  const q = text.toLowerCase().trim();
+
+  // LOCATION / OFFICE
+  if (
+    q.includes("location") ||
+    q.includes("office") ||
+    q.includes("saan ang") ||
+    q.includes("saan located") ||
+    q.includes("where can i find") ||
+    q.includes("where is")
+  ) {
+    return "AAV Car Rental Services is located at 46 Pag-asa St., Brgy. Katuparan, Taguig City. Vehicle pickup and return are handled at this location.";
+  }
+
+  // VEHICLE RETURN
+  if (
+    q.includes("ibabalik") ||
+    q.includes("return car") ||
+    q.includes("return vehicle") ||
+    q.includes("saan ibabalik")
+  ) {
+    return "The rented vehicle should be returned to AAV Car Rental Services at 46 Pag-asa St., Brgy. Katuparan, Taguig City, unless another return arrangement has been approved by AAV staff.";
+  }
+
+  // PAYMENT
+  if (
+    q.includes("bayad") ||
+    q.includes("magbabayad") ||
+    q.includes("payment") ||
+    q.includes("pay") ||
+    q.includes("gcash") ||
+    q.includes("bank")
+  ) {
+    return "You can pay through the QR codes shown in the Payments section. After sending your payment, upload the receipt or proof of payment and wait for admin verification.";
+  }
+
+  // BOOKING PROCESS
+  if (
+    q.includes("how to book") ||
+    q.includes("how do i book") ||
+    q.includes("how can i book") ||
+    q.includes("booking process") ||
+    q.includes("how to reserve") ||
+    q.includes("paano mag book") ||
+    q.includes("paano magbook") ||
+    q.includes("paano mag rent") ||
+    q.includes("paano mag reserve")
+  ) {
+    return "To book a vehicle: choose an available vehicle, enter your pickup and return details, select your trip destination, review the rental cost, and submit the booking. After that, go to Payments and send your payment confirmation.";
+  }
+
+  // REQUIREMENTS
+  if (
+    q.includes("requirement") ||
+    q.includes("requirements") ||
+    q.includes("document") ||
+    q.includes("documents") ||
+    q.includes("license") ||
+    q.includes("id")
+  ) {
+    return "Customers must provide the required identification and rental documents, including a valid driver's license and other verification documents requested by AAV Car Rental Services.";
+  }
+
+  // VEHICLES / AVAILABILITY
+  if (
+    q.includes("available vehicle") ||
+    q.includes("available vehicles") ||
+    q.includes("available car") ||
+    q.includes("available cars") ||
+    q.includes("anong sasakyan") ||
+    q.includes("anong available") ||
+    q.includes("what cars are available") ||
+    q.includes("what vehicles are available")
+  ) {
+    return "You can check the Browse Vehicles section for the current available vehicles, rates, transmission, fuel type, seating capacity, and availability status.";
+  }
+
+  // PRICING
+  if (
+    q.includes("price") ||
+    q.includes("rate") ||
+    q.includes("cost") ||
+    q.includes("magkano")
+  ) {
+    return "Rental rates depend on the selected vehicle, trip destination, and rental duration. You can see the starting rate in Browse Vehicles, and the exact total is automatically calculated in the Booking Form.";
+  }
+
+  return null;
 }
 
 function calculateTotal() {
