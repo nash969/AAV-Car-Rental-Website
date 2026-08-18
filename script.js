@@ -278,6 +278,10 @@ async function renderPanel(panel) {
   const content = await panels[currentRole][panel]();
 
   workspaceContent.innerHTML = content;
+
+  if (panel === "tracking") {
+    initVehicleTracking();
+  }
 }
 
 
@@ -1118,8 +1122,101 @@ async function showPaymentProof(paymentId) {
 }
 
 function trackingPanel() {
-  return `<div class="tracking-layout"><section class="map-card"><h3>Interactive Map</h3><div class="map-visual"><span class="route-line"></span><span class="pin pickup"></span><span class="pin destination"></span><span class="pin car">${icon("i-car")}</span></div></section><aside class="panel"><h3>Vehicle Tracking</h3><div class="summary-line"><span>Vehicle location</span><strong>BGC, Taguig</strong></div><div class="summary-line"><span>Current status</span><strong>On Trip</strong></div><div class="summary-line"><span>Pickup point</span><strong>AAV Office</strong></div><div class="summary-line"><span>Destination</span><strong>NAIA Terminal 3</strong></div><div class="summary-line"><span>Estimated Arrival Time</span><strong>28 min</strong></div><div class="mini-list"><div><span>Available</span><strong>18</strong></div><div><span>Reserved</span><strong>7</strong></div><div><span>Returned</span><strong>11</strong></div><div><span>Maintenance</span><strong>2</strong></div></div></aside></div>`;
+  return `<div class="tracking-layout">
+    <section class="map-card">
+      <h3>Interactive Map</h3>
+      <div id="vehicleMap" class="map-visual"></div>
+    </section>
+    <aside class="panel">
+      <h3>Vehicle Tracking</h3>
+      <div class="summary-line"><span>Vehicle location</span><strong id="trackLocation">Loading...</strong></div>
+      <div class="summary-line"><span>Current status</span><strong id="trackStatus">-</strong></div>
+      <div class="summary-line"><span>Speed</span><strong id="trackSpeed">-</strong></div>
+      <div class="summary-line"><span>Last updated</span><strong id="trackUpdated">-</strong></div>
+      <div class="mini-list">
+        <div><span>Available</span><strong>18</strong></div>
+        <div><span>Reserved</span><strong>7</strong></div>
+        <div><span>Returned</span><strong>11</strong></div>
+        <div><span>Maintenance</span><strong>2</strong></div>
+      </div>
+    </aside>
+  </div>`;
 }
+
+let vehicleMapInstance = null;
+let vehicleMarker = null;
+let trackingInterval = null;
+let animationFrame = null;
+
+function animateMarkerTo(targetLatLng, durationMs) {
+  if (!vehicleMarker) return;
+  if (animationFrame) cancelAnimationFrame(animationFrame);
+
+  const start = vehicleMarker.getLatLng();
+  const startTime = performance.now();
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / durationMs, 1);
+
+    const lat = start.lat + (targetLatLng[0] - start.lat) * t;
+    const lng = start.lng + (targetLatLng[1] - start.lng) * t;
+
+    vehicleMarker.setLatLng([lat, lng]);
+
+    if (t < 1) {
+      animationFrame = requestAnimationFrame(step);
+    }
+  }
+
+  animationFrame = requestAnimationFrame(step);
+}
+
+async function initVehicleTracking(vehicleId = 1) {
+  if (vehicleMapInstance) {
+    vehicleMapInstance.remove();
+    vehicleMapInstance = null;
+  }
+  if (vehicleMarker) {
+    vehicleMarker = null;
+  }
+  if (trackingInterval) clearInterval(trackingInterval);
+  if (animationFrame) cancelAnimationFrame(animationFrame);
+
+  const POLL_INTERVAL_MS = 10000;
+
+  vehicleMapInstance = L.map('vehicleMap').setView([14.5995, 120.9842], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+  }).addTo(vehicleMapInstance);
+
+  async function poll() {
+    try {
+      const data = await apiFetch(`/vehicles/${vehicleId}/location`);
+      const latlng = [data.latitude, data.longitude];
+
+      if (!vehicleMarker) {
+        vehicleMarker = L.marker(latlng).addTo(vehicleMapInstance);
+        vehicleMapInstance.setView(latlng, 14);
+      } else {
+        animateMarkerTo(latlng, POLL_INTERVAL_MS * 0.9);
+        vehicleMapInstance.panTo(latlng);
+      }
+
+      document.querySelector('#trackLocation').textContent = `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`;
+      document.querySelector('#trackStatus').textContent = data.status;
+      document.querySelector('#trackSpeed').textContent = `${data.speed} kn`;
+      document.querySelector('#trackUpdated').textContent = new Date(data.last_updated).toLocaleTimeString();
+    } catch (error) {
+      console.error('Failed to fetch vehicle location:', error);
+      document.querySelector('#trackLocation').textContent = 'Unavailable';
+    }
+  }
+
+  poll();
+  trackingInterval = setInterval(poll, POLL_INTERVAL_MS);
+}
+
 
 async function markNotificationAsRead(notificationId) {
   try {
