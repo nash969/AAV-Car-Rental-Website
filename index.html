@@ -168,11 +168,148 @@
             <label>Password<input id="loginPassword" type="password" value="Customer@123" required /></label>
             <div class="form-row">
               <label class="check"><input type="checkbox" checked /> Remember Me</label>
-              <a href="#">Forgot Password?</a>
+              <button
+                class="link-button"
+                data-route="forgot-password"
+                type="button"
+              >
+                Forgot Password?
+              </button>
             </div>
             <button class="primary full" type="submit">Login</button>
             <p>New customer? <button class="link-button" data-route="register" type="button">Create an account</button></p>
           </form>
+        </section>
+      </main>
+
+      <main id="forgot-password" class="view auth-view">
+        <section class="auth-card">
+
+          <div class="auth-art">
+            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
+            <h1>Forgot Password?</h1>
+            <p>
+              Enter the email address registered to your AAV account.
+              We will send you a verification code.
+            </p>
+          </div>
+
+          <form class="auth-form" id="forgotPasswordForm">
+            <h2>Reset Password</h2>
+
+            <label>
+              Email
+              <input
+                id="forgotEmail"
+                type="email"
+                placeholder="your@email.com"
+                required
+              />
+            </label>
+
+            <button class="primary full" type="submit">
+              Send OTP
+            </button>
+
+            <p>
+              Remember your password?
+              <button
+                class="link-button"
+                data-route="login"
+                type="button"
+              >
+                Back to Login
+              </button>
+            </p>
+          </form>
+
+        </section>
+      </main>
+
+      <main id="verify-otp" class="view auth-view">
+        <section class="auth-card">
+
+          <div class="auth-art">
+            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
+            <h1>Verify OTP</h1>
+            <p>
+              Enter the 6-digit verification code sent to your registered email.
+            </p>
+          </div>
+
+          <form class="auth-form" id="verifyOtpForm">
+            <h2>Enter Verification Code</h2>
+
+            <label>
+              OTP Code
+              <input
+                id="otpCode"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                placeholder="Enter 6-digit OTP"
+                required
+              />
+            </label>
+
+            <button class="primary full" type="submit">
+              Verify OTP
+            </button>
+
+            <p>
+              Didn't receive the code?
+              <button
+                class="link-button"
+                data-route="forgot-password"
+                type="button"
+              >
+                Send Again
+              </button>
+            </p>
+          </form>
+
+        </section>
+      </main>
+
+      <main id="reset-password" class="view auth-view">
+        <section class="auth-card">
+
+          <div class="auth-art">
+            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
+            <h1>Create New Password</h1>
+            <p>
+              Enter your new password below.
+            </p>
+          </div>
+
+          <form class="auth-form" id="resetPasswordForm">
+            <h2>Reset Password</h2>
+
+            <label>
+              New Password
+              <input
+                id="newPassword"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+
+            <label>
+              Confirm Password
+              <input
+                id="confirmNewPassword"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+
+            <button class="primary full" type="submit">
+              Update Password
+            </button>
+          </form>
+
         </section>
       </main>
 
@@ -187,18 +324,132 @@
 
 
           <form class="register-form" id="registerForm">
-            <label>First Name<input id="firstName" type="text" placeholder="Juan" /></label>
-            <label>Last Name<input id="lastName" type="text" placeholder="Dela Cruz" /></label>
-            <label>Email<input id="registerEmail" type="email" placeholder="customer@email.com" /></label>
-            <label>Mobile Number<input id="registerPhone" type="tel" placeholder="+639274589432" /></label>
-            <label class="wide">Address<input type="text" placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City" /></label>
-            <label>Driver's License Number<input type="text" placeholder="N01-23-456789" /></label>
-            <label>Password<input id="registerPassword" type="password" /></label>
-            <label>Confirm Password<input type="password" /></label>
-            <label>Upload Government ID<input type="file" /></label>
-            <label>Upload Driver's License<input type="file" /></label>
-            <label>Upload Selfie Holding ID<input type="file" /></label>
-            <button class="primary wide" type="submit">Create Account</button>
+
+            <label>
+              First Name
+              <input
+                id="firstName"
+                name="first_name"
+                type="text"
+                placeholder="Juan"
+                required
+              />
+            </label>
+
+            <label>
+              Last Name
+              <input
+                id="lastName"
+                name="last_name"
+                type="text"
+                placeholder="Dela Cruz"
+                required
+              />
+            </label>
+
+            <label>
+              Email
+              <input
+                id="registerEmail"
+                name="email"
+                type="email"
+                placeholder="customer@email.com"
+                required
+              />
+            </label>
+
+            <label>
+              Mobile Number
+              <input
+                id="registerPhone"
+                name="phone"
+                type="tel"
+                placeholder="+639274589432"
+                required
+              />
+            </label>
+
+            <label class="wide">
+              Address
+              <input
+                id="registerAddress"
+                name="address"
+                type="text"
+                placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City"
+                required
+              />
+            </label>
+
+            <label>
+              Driver's License Number
+              <input
+                id="driverLicenseNumber"
+                name="driver_license_number"
+                type="text"
+                placeholder="N01-23-456789"
+                required
+              />
+            </label>
+
+            <label>
+              Password
+              <input
+                id="registerPassword"
+                name="password"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+
+            <label>
+              Confirm Password
+              <input
+                id="registerPasswordConfirmation"
+                name="password_confirmation"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+
+            <label>
+              Upload Government ID
+              <input
+                id="governmentId"
+                name="government_id"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required
+              />
+            </label>
+
+            <label>
+              Upload Driver's License
+              <input
+                id="driverLicense"
+                name="driver_license"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required
+              />
+            </label>
+
+            <label>
+              Upload Selfie Holding ID
+              <input
+                id="selfieId"
+                name="selfie_id"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required
+              />
+            </label>
+
+            <button class="primary wide" type="submit">
+              Create Account
+            </button>
+
           </form>
         </section>
       </main>

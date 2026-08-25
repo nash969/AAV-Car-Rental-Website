@@ -83,27 +83,342 @@ function localDateTimeNow() {
 function logout() {
   localStorage.removeItem("aavUser");
   localStorage.removeItem("aavToken");
+
   currentUser = null;
   authToken = null;
+
+  carsCache = null;
+  carsCacheTime = 0;
+
+  bookingsCache = null;
+  bookingsCacheTime = 0;
+
+  paymentsCache = null;
+  paymentsCacheTime = 0;
+
+  myBookingsCache = null;
+  myBookingsCacheTime = 0;
+
   setView("landing");
 }
 
-async function getCars() {
+let carsCache = null;
+let carsCacheTime = 0;
+
+async function getCars(forceRefresh = false) {
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    carsCache &&
+    now - carsCacheTime < 30000
+  ) {
+    return carsCache;
+  }
+
   try {
     const response = await fetch(`${API_URL}/cars`);
     const cars = await response.json();
 
+    carsCache = cars;
+    carsCacheTime = now;
+
     return cars;
   } catch (error) {
     console.error("Error fetching cars:", error);
-    return [];
+
+    return carsCache || [];
   }
+}
+
+let bookingsCache = null;
+let bookingsCacheTime = 0;
+
+async function getBookings(forceRefresh = false) {
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    bookingsCache &&
+    now - bookingsCacheTime < 30000
+  ) {
+    return bookingsCache;
+  }
+
+  const bookings = await apiFetch("/bookings");
+
+  bookingsCache = bookings;
+  bookingsCacheTime = now;
+
+  return bookings;
+}
+
+let paymentsCache = null;
+let paymentsCacheTime = 0;
+
+async function getPayments(forceRefresh = false) {
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    paymentsCache &&
+    now - paymentsCacheTime < 30000
+  ) {
+    return paymentsCache;
+  }
+
+  const payments = await apiFetch("/payments");
+
+  paymentsCache = payments;
+  paymentsCacheTime = now;
+
+  return payments;
+}
+
+let myBookingsCache = null;
+let myBookingsCacheTime = 0;
+
+async function getMyBookings(forceRefresh = false) {
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    myBookingsCache &&
+    now - myBookingsCacheTime < 30000
+  ) {
+    return myBookingsCache;
+  }
+
+  const bookings = await apiFetch("/my/bookings");
+
+  myBookingsCache = bookings;
+  myBookingsCacheTime = now;
+
+  return bookings;
 }
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function filterEmployeeCustomers(value) {
+  const search = value.toLowerCase().trim();
+
+  const rows = document.querySelectorAll(
+    "#employeeCustomersTable tbody tr"
+  );
+
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+
+    row.style.display =
+      text.includes(search) ? "" : "none";
+  });
+}
+
+async function viewCustomerRequirements(customerId) {
+  try {
+    const customer = await apiFetch(
+      `/customers/${customerId}/requirements`
+    );
+
+    workspaceTitle.textContent = "Customer Verification";
+
+    workspaceContent.innerHTML = `
+      <section class="panel">
+        <h3>Customer Information</h3>
+
+        <div class="mini-list">
+          <div>
+            <span>Name</span>
+            <strong>${customer.name || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Email</span>
+            <strong>${customer.email || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Mobile</span>
+            <strong>${customer.phone || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Address</span>
+            <strong>${customer.address || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Driver's License Number</span>
+            <strong>${customer.driver_license_number || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Verification Status</span>
+            <strong>${capitalize(
+              customer.verification_status || "pending"
+            )}</strong>
+          </div>
+        </div>
+      </section>
+
+        <div class="form-grid">
+
+          ${
+            customer.government_id_path
+              ? `
+                <button
+                  type="button"
+                  class="secondary"
+                  onclick="viewCustomerDocument(${customer.id}, 'government-id')">
+                  View Government ID
+                </button>
+              `
+              : `
+                <button
+                  type="button"
+                  class="secondary"
+                  disabled>
+                  Government ID - Not Submitted
+                </button>
+              `
+          }
+
+          ${
+            customer.driver_license_path
+              ? `
+                <button
+                  type="button"
+                  class="secondary"
+                  onclick="viewCustomerDocument(${customer.id}, 'driver-license')">
+                  View Driver's License
+                </button>
+              `
+              : `
+                <button
+                  type="button"
+                  class="secondary"
+                  disabled>
+                  Driver's License - Not Submitted
+                </button>
+              `
+          }
+
+          ${
+            customer.selfie_id_path
+              ? `
+                <button
+                  type="button"
+                  class="secondary"
+                  onclick="viewCustomerDocument(${customer.id}, 'selfie-id')">
+                  View Selfie with ID
+                </button>
+              `
+              : `
+                <button
+                  type="button"
+                  class="secondary"
+                  disabled>
+                  Selfie with ID - Not Submitted
+                </button>
+              `
+          }
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="renderPanel('customers')">
+            Back to Customers
+          </button>
+
+          <button
+            type="button"
+            class="primary"
+            onclick="reviewCustomerVerification(${customer.id}, 'verified')">
+            Verify Customer
+          </button>
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="reviewCustomerVerification(${customer.id}, 'rejected')">
+            Reject Customer
+          </button>
+        </div>
+      </section>
+    `;
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function viewCustomerDocument(customerId, type) {
+  try {
+    const response = await fetch(
+      `${API_URL}/customers/${customerId}/documents/${type}`,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          Accept: "image/*"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(
+        data.message || "Unable to open customer document."
+      );
+    }
+
+    const blob = await response.blob();
+    const documentUrl = URL.createObjectURL(blob);
+
+    window.open(documentUrl, "_blank");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(documentUrl);
+    }, 60000);
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function reviewCustomerVerification(customerId, status) {
+  try {
+    const actionText =
+      status === "verified"
+        ? "verify this customer"
+        : "reject this customer";
+
+    const confirmed = confirm(
+      `Are you sure you want to ${actionText}?`
+    );
+
+    if (!confirmed) return;
+
+    await apiFetch(`/customers/${customerId}/verification`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: status
+      })
+    });
+
+    alert(
+      status === "verified"
+        ? "Customer verified successfully."
+        : "Customer verification rejected."
+    );
+
+    await renderPanel("customers");
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
 
 const accounts = {
   "admin@aavrental.com": { password: "Admin@123", role: "admin", name: "System Admin" },
@@ -119,10 +434,16 @@ const roleMenus = {
     ["assistant", "AI Assistant", "i-chat"], ["notifications", "Notifications", "i-bell"], ["profile", "Profile", "i-user"], ["logout", "Logout", "i-log-out"]
   ],
   employee: [
-    ["dashboard", "Dashboard", "i-home"], ["reservations", "Reservations", "i-file"],
-    ["customers", "Customers", "i-user"], ["vehicles", "Vehicles", "i-car"],
-    ["payments", "Payments", "i-card"], ["chat", "AI Chat Monitor", "i-chat"], ["reports", "Reports", "i-chart"],
-    ["profile", "Profile", "i-user"], ["logout", "Logout", "i-log-out"]
+    ["dashboard", "Dashboard", "i-home"],
+    ["reservations", "Reservations", "i-file"],
+    ["rentals", "Rentals", "i-car"],
+    ["customers", "Customers", "i-user"],
+    ["vehicles", "Vehicles", "i-car"],
+    ["payments", "Payments", "i-card"],
+    ["chat", "AI Chat Monitor", "i-chat"],
+    ["reports", "Reports", "i-chart"],
+    ["profile", "Profile", "i-user"],
+    ["logout", "Logout", "i-log-out"]
   ],
   admin: [
     ["dashboard", "Dashboard", "i-home"], ["employees", "Employees", "i-user"],
@@ -137,8 +458,10 @@ const roleMenus = {
 
 let currentRole = currentUser?.role || "customer";
 let selectedCar = null;
+let editingCarId = null;
 let bookingCars = [];
 let unreadNotifications = 0;
+let resetEmail = null;
 
 async function openBooking(carId) {
 
@@ -179,11 +502,23 @@ document.addEventListener("click", event => {
     if (route === "landing") setView("landing");
     if (route === "login") setView("login");
     if (route === "register") setView("register");
+    if (route === "forgot-password") setView("forgot-password");
+    if (route === "verify-otp") setView("verify-otp");
+    if (route === "reset-password") setView("reset-password");
   }
   if (event.target.closest("[data-action='logout']")) {
     logout();
   }
-  if (panel) renderPanel(panel);
+  if (panel) {
+
+  // Reset Edit Vehicle mode when the admin manually opens
+  // Vehicle Management from the sidebar
+    if (panel === "vehicle-management") {
+      editingCarId = null;
+    }
+
+    renderPanel(panel);
+  }
 });
 
 
@@ -225,6 +560,159 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
     }
 });
 
+document.querySelector("#registerForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  if (!form.reportValidity()) {
+    return;
+  }
+
+  const password = document.querySelector("#registerPassword").value;
+  const passwordConfirmation = document.querySelector("#registerPasswordConfirmation").value;
+
+  if (password !== passwordConfirmation) {
+    alert("Passwords do not match.");
+    return;
+  }
+
+  const formData = new FormData(form);
+
+  formData.set(
+    "name",
+    `${formData.get("first_name")} ${formData.get("last_name")}`.trim()
+  );
+
+  try {
+
+    const response = await apiFetch("/register", {
+      method: "POST",
+      body: formData
+    });
+
+    console.log("Registration response:", response);
+
+    alert("Account created successfully. You can now log in.");
+
+    form.reset();
+
+    setView("login");
+
+  } catch (error) {
+
+    console.error("Registration error:", error);
+
+    alert(error.message);
+  }
+});
+
+document.querySelector("#forgotPasswordForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const email = document.querySelector("#forgotEmail").value;
+
+  try {
+
+    const response = await apiFetch("/forgot-password/send-otp", {
+      method: "POST",
+      body: JSON.stringify({
+        email: email
+      })
+    });
+
+    console.log("OTP Response:", response);
+
+    resetEmail = email;
+
+    alert(
+      "OTP sent successfully! Please check your email."
+    );
+
+    setView("verify-otp");
+
+  } catch (error) {
+
+    console.error("Forgot password error:", error);
+
+    alert(error.message);
+  }
+});
+
+document.querySelector("#verifyOtpForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const otp = document.querySelector("#otpCode").value.trim();
+
+  if (!resetEmail) {
+    alert("Please request a new OTP first.");
+    setView("forgot-password");
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/forgot-password/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({
+        email: resetEmail,
+        otp: otp
+      })
+    });
+
+    console.log("Verify OTP Response:", response);
+
+    alert("OTP verified successfully!");
+
+    setView("reset-password");
+
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    alert(error.message);
+  }
+});
+
+document.querySelector("#resetPasswordForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const password = document.querySelector("#newPassword").value;
+  const confirmPassword = document.querySelector("#confirmNewPassword").value;
+
+  if (!resetEmail) {
+    alert("Password reset session expired. Please request a new OTP.");
+    setView("forgot-password");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    alert("Passwords do not match.");
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/forgot-password/reset", {
+      method: "POST",
+      body: JSON.stringify({
+        email: resetEmail,
+        password: password,
+        password_confirmation: confirmPassword
+      })
+    });
+
+    alert(response.message || "Password updated successfully!");
+
+    resetEmail = null;
+
+    document.querySelector("#resetPasswordForm").reset();
+    document.querySelector("#verifyOtpForm").reset();
+    document.querySelector("#forgotPasswordForm").reset();
+
+    setView("login");
+
+  } catch (error) {
+    console.error("Reset password error:", error);
+    alert(error.message);
+  }
+});
 
 async function openPortal(role) {
   currentRole = role;
@@ -278,7 +766,72 @@ async function renderPanel(panel) {
   const content = await panels[currentRole][panel]();
 
   workspaceContent.innerHTML = content;
+
+  if (panel === "payments" && currentRole === "customer") {
+    setTimeout(() => {
+      updatePaymentBreakdown();
+    }, 0);
+  }
 }
+
+async function saveVehicle(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const formData = new FormData(form);
+
+  // Convert availability to Laravel-friendly value
+  formData.set(
+    "available",
+    formData.get("available") === "1" ? "1" : "0"
+  );
+
+  try {
+
+    let response;
+
+    if (editingCarId) {
+
+      // Laravel file uploads are safer through POST + _method=PATCH
+      formData.append("_method", "PATCH");
+
+      response = await apiFetch(`/cars/${editingCarId}`, {
+        method: "POST",
+        body: formData
+      });
+
+    } else {
+
+      response = await apiFetch("/cars", {
+        method: "POST",
+        body: formData
+      });
+
+    }
+
+    console.log("Vehicle saved:", response);
+
+    if (editingCarId) {
+      alert("Vehicle updated successfully!");
+    } else {
+      alert("Vehicle added successfully!");
+    }
+
+    editingCarId = null;
+
+    form.reset();
+
+    await getCars(true);
+
+    await renderPanel("vehicle-management");
+
+  } catch (error) {
+
+    console.error("Error saving vehicle:", error);
+
+    alert(error.message || "Failed to save vehicle.");
+  }
+} 
 
 
 async function vehicleCards() {
@@ -300,7 +853,13 @@ async function vehicleCards() {
      cars.map(car =>
       vehicleCard(
         car.id,
-        car.image,
+        car.image
+          ? (
+              car.image.startsWith("/storage/")
+                ? `http://127.0.0.1:8000${car.image}`
+                : car.image
+            )
+          : "",
         capitalize(car.brand) + " " + capitalize(car.model),
         capitalize(car.brand),
         capitalize(car.transmission),
@@ -315,6 +874,247 @@ async function vehicleCards() {
     }
 
   </div>`;
+}
+
+async function employeeVehicleCards() {
+  const cars = await getCars();
+
+  return `
+    <div class="filters">
+
+      <select
+        id="employeeVehicleType"
+        onchange="filterEmployeeVehicles()">
+        <option value="">Vehicle Type</option>
+        <option value="SUV">SUV</option>
+        <option value="sedan">Sedan</option>
+      </select>
+
+      <select
+        id="employeePriceRange"
+        onchange="filterEmployeeVehicles()">
+        <option value="">Price Range</option>
+        <option value="1500-2500">₱1,500 - ₱2,500</option>
+        <option value="2501-5000">₱2,501 - ₱5,000</option>
+      </select>
+
+      <select
+        id="employeeTransmission"
+        onchange="filterEmployeeVehicles()">
+        <option value="">Transmission</option>
+        <option value="automatic">Automatic</option>
+        <option value="manual">Manual</option>
+      </select>
+
+      <select
+        id="employeeFuel"
+        onchange="filterEmployeeVehicles()">
+        <option value="">Fuel</option>
+        <option value="gasoline">Gasoline</option>
+        <option value="diesel">Diesel</option>
+      </select>
+
+      <select
+        id="employeeAvailability"
+        onchange="filterEmployeeVehicles()">
+        <option value="">Availability</option>
+        <option value="available">Available</option>
+        <option value="reserved">Reserved</option>
+      </select>
+
+    </div>
+
+    <div class="vehicle-grid" id="employeeVehicleGrid">
+      ${cars.map(car => {
+
+        const image = car.image
+          ? (
+              car.image.startsWith("/storage/")
+                ? `http://127.0.0.1:8000${car.image}`
+                : car.image
+            )
+          : "";
+
+        const name =
+          `${capitalize(car.brand)} ${capitalize(car.model)}`;
+
+        const price =
+          car.rates && car.rates.length > 0
+            ? "Starts at ₱" +
+              Math.min(
+                ...car.rates.map(rate => Number(rate.price))
+              ).toLocaleString("en-PH")
+            : "Rate unavailable";
+
+        const availability =
+          car.available ? "Available" : "Reserved";
+
+        const statusClass =
+          car.available ? "available" : "reserved";
+
+        return `
+          <article class="vehicle-card">
+
+            <img src="${image}" alt="${name}">
+
+            <div class="vehicle-body">
+
+              <span class="status ${statusClass}">
+                ${availability}
+              </span>
+
+              <h3>${name}</h3>
+
+              <p>
+                ${capitalize(car.brand)} ·
+                ${capitalize(car.transmission)} ·
+                ${capitalize(car.fuel_type)} ·
+                ${car.seats} seats
+              </p>
+
+              <div class="price-row">
+                <strong>${price}</strong>
+              </div>
+
+            </div>
+
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+async function filterEmployeeVehicles() {
+  const cars = await getCars();
+
+  const type = document.querySelector("#employeeVehicleType")?.value || "";
+  const priceRange = document.querySelector("#employeePriceRange")?.value || "";
+  const transmission = document.querySelector("#employeeTransmission")?.value || "";
+  const fuel = document.querySelector("#employeeFuel")?.value || "";
+  const availability = document.querySelector("#employeeAvailability")?.value || "";
+
+  const filteredCars = cars.filter(car => {
+
+    const carType = (car.vehicle_type || "").toLowerCase();
+    const selectedType = type.toLowerCase();
+
+    const carTransmission = (car.transmission || "").toLowerCase();
+    const carFuel = (car.fuel_type || "").toLowerCase();
+
+    const carAvailability =
+      car.available ? "available" : "reserved";
+
+    const carPrice =
+      car.rates && car.rates.length > 0
+        ? Math.min(...car.rates.map(rate => Number(rate.price)))
+        : Number(car.price_per_day || 0);
+
+    const matchesType =
+      !selectedType || carType === selectedType;
+
+    const matchesTransmission =
+      !transmission || carTransmission === transmission;
+
+    const matchesFuel =
+      !fuel || carFuel === fuel;
+
+    const matchesAvailability =
+      !availability || carAvailability === availability;
+
+    let matchesPrice = true;
+
+    if (priceRange === "1500-2500") {
+      matchesPrice = carPrice >= 1500 && carPrice <= 2500;
+    }
+
+    if (priceRange === "2501-5000") {
+      matchesPrice = carPrice >= 2501 && carPrice <= 5000;
+    }
+
+    return (
+      matchesType &&
+      matchesPrice &&
+      matchesTransmission &&
+      matchesFuel &&
+      matchesAvailability
+    );
+  });
+
+  renderEmployeeVehicleCards(filteredCars);
+}
+
+function renderEmployeeVehicleCards(cars) {
+
+  const vehicleGrid = document.querySelector("#employeeVehicleGrid");
+
+  if (!vehicleGrid) return;
+
+  if (cars.length === 0) {
+    vehicleGrid.innerHTML = `
+      <section class="panel">
+        <p>No vehicles match the selected filters.</p>
+      </section>
+    `;
+    return;
+  }
+
+  vehicleGrid.innerHTML = cars.map(car => {
+
+    const image = car.image
+      ? (
+          car.image.startsWith("/storage/")
+            ? `http://127.0.0.1:8000${car.image}`
+            : car.image
+        )
+      : "";
+
+    const name =
+      `${capitalize(car.brand)} ${capitalize(car.model)}`;
+
+    const price =
+      car.rates && car.rates.length > 0
+        ? "Starts at ₱" +
+          Math.min(
+            ...car.rates.map(rate => Number(rate.price))
+          ).toLocaleString("en-PH")
+        : "Rate unavailable";
+
+    const availability =
+      car.available ? "Available" : "Reserved";
+
+    const statusClass =
+      car.available ? "available" : "reserved";
+
+    return `
+      <article class="vehicle-card">
+
+        <img src="${image}" alt="${name}">
+
+        <div class="vehicle-body">
+
+          <span class="status ${statusClass}">
+            ${availability}
+          </span>
+
+          <h3>${name}</h3>
+
+          <p>
+            ${capitalize(car.brand)} ·
+            ${capitalize(car.transmission)} ·
+            ${capitalize(car.fuel_type)} ·
+            ${car.seats} seats
+          </p>
+
+          <div class="price-row">
+            <strong>${price}</strong>
+          </div>
+
+        </div>
+
+      </article>
+    `;
+  }).join("");
 }
 
 function vehicleCard(id, img, name, type, transmission, fuel, seats, price, availability) {
@@ -332,6 +1132,185 @@ function vehicleCard(id, img, name, type, transmission, fuel, seats, price, avai
     </article>`;
 }
 
+function adminVehicleCard(id, img, name, type, transmission, fuel, seats, price, availability) {
+  const statusClass = availability === "Available" ? "available" : "reserved";
+
+  return `
+    <article class="vehicle-card">
+
+      <img src="${img || './assets/no-image.jpg'}" alt="${name}">
+
+      <div class="vehicle-body">
+
+        <span class="status ${statusClass}">
+          ${availability}
+        </span>
+
+        <h3>${name}</h3>
+
+        <p>
+          ${type} · ${transmission} · ${fuel} · ${seats}
+        </p>
+
+        <div class="price-row">
+          <strong>${price}</strong>
+
+          <div class="vehicle-actions">
+
+            <button
+              type="button"
+              class="secondary"
+              onclick="editVehicle(${id})">
+              Edit
+            </button>
+
+            <button
+              type="button"
+              class="secondary"
+              onclick="deleteVehicle(${id}, '${name}')">
+              Delete
+            </button>
+
+          </div>
+        </div>
+
+      </div>
+
+    </article>
+  `;
+}
+
+async function adminVehicleCards() {
+
+  const cars = await getCars();
+
+  return `
+    <div class="filters">
+      <select><option>Vehicle Type</option></select>
+      <select><option>Price Range</option></select>
+      <select><option>Transmission</option></select>
+      <select><option>Fuel</option></select>
+      <select><option>Availability</option></select>
+    </div>
+
+    <div class="vehicle-grid">
+
+      ${cars.map(car =>
+        adminVehicleCard(
+          car.id,
+          car.image
+            ? (
+                car.image.startsWith("/storage/")
+                  ? `http://127.0.0.1:8000${car.image}`
+                  : car.image
+              )
+            : "",
+          capitalize(car.brand) + " " + capitalize(car.model),
+          capitalize(car.brand),
+          capitalize(car.transmission),
+          capitalize(car.fuel_type),
+          car.seats + " seats",
+          car.rates && car.rates.length > 0
+            ? "Starts at ₱" + Math.min(
+                ...car.rates.map(rate => Number(rate.price))
+              ).toLocaleString("en-PH")
+            : "Rate unavailable",
+          car.available ? "Available" : "Unavailable"
+        )
+      ).join("")}
+
+    </div>
+  `;
+}
+
+async function deleteVehicle(carId, carName) {
+
+  const confirmed = confirm(
+    `Are you sure you want to delete ${carName}?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+
+    await apiFetch(`/cars/${carId}`, {
+      method: "DELETE"
+    });
+
+    alert(`${carName} deleted successfully.`);
+
+    await getCars(true);
+
+    await renderPanel("vehicle-management");
+
+  } catch (error) {
+
+    console.error("Error deleting vehicle:", error);
+
+    alert(error.message || "Failed to delete vehicle.");
+  }
+}
+
+async function editVehicle(carId) {
+
+  const cars = await getCars();
+
+  const car = cars.find(car =>
+    Number(car.id) === Number(carId)
+  );
+
+  if (!car) {
+    alert("Vehicle not found.");
+    return;
+  }
+
+  editingCarId = car.id;
+
+  const form = document.querySelector("#vehicleForm");
+
+  form.brand.value = car.brand || "";
+  form.model.value = car.model || "";
+  form.year.value = car.year || "";
+  form.fuel_type.value = car.fuel_type || "";
+  form.transmission.value = car.transmission || "";
+  form.seats.value = car.seats || "";
+  form.available.value = car.available ? "1" : "0";
+
+  const within12 = car.rates?.find(rate =>
+  rate.location === "within" && rate.duration === "12hrs"
+  );
+
+  const within24 = car.rates?.find(rate =>
+    rate.location === "within" && rate.duration === "24hrs"
+  );
+
+  const outside12 = car.rates?.find(rate =>
+    rate.location === "outside" && rate.duration === "12hrs"
+  );
+
+ const outside24 = car.rates?.find(rate =>
+  rate.location === "outside" && rate.duration === "24hrs"
+  );
+
+  const unli24 = car.rates?.find(rate =>
+    rate.location === "unli" && rate.duration === "24hrs"
+  );
+
+  form.within_12hrs.value = within12?.price || "";
+  form.within_24hrs.value = within24?.price || "";
+  form.outside_12hrs.value = outside12?.price || "";
+  form.outside_24hrs.value = outside24?.price || "";
+  form.unli_24hrs.value = unli24?.price || "";
+
+  const button = form.querySelector("button[type='submit']");
+  button.textContent = "Update Vehicle";
+
+  form.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
 
 function metrics(items) {
   return `<div class="metrics">${items.map(([label, value]) => `<div class="metric-card"><span>${label}</span><strong>${value}</strong></div>`).join("")}</div>`;
@@ -343,11 +1322,212 @@ function table(title, headers, rows) {
 }
 
 
-function charts() {
-  return `<div class="dashboard-grid">
-    <section class="chart-card"><h3>Monthly Revenue Chart</h3><div class="chart-bars"><span style="height:44%"></span><span style="height:62%"></span><span style="height:51%"></span><span style="height:78%"></span><span style="height:86%"></span><span style="height:68%"></span></div></section>
-    <section class="chart-card"><h3>Vehicle Availability Chart</h3><div class="donut"></div></section>
-  </div>`;
+async function charts(cars = null, payments = null) {
+
+  if (!cars || !payments) {
+    [cars, payments] = await Promise.all([
+      getCars(),
+      getPayments()
+    ]);
+  }
+
+  // =========================
+  // VEHICLE AVAILABILITY
+  // =========================
+
+  const totalVehicles = cars.length;
+
+  const availableVehicles = cars.filter(
+    car => Boolean(car.available)
+  ).length;
+
+  const unavailableVehicles =
+    totalVehicles - availableVehicles;
+
+  const availablePercent =
+    totalVehicles > 0
+      ? Math.round((availableVehicles / totalVehicles) * 100)
+      : 0;
+
+  const unavailablePercent =
+    totalVehicles > 0
+      ? 100 - availablePercent
+      : 0;
+
+
+  // =========================
+  // MONTHLY REVENUE
+  // =========================
+
+  const approvedPayments = payments.filter(
+    payment => payment.status === "approved"
+  );
+
+  const monthlyRevenue = {};
+
+  approvedPayments.forEach(payment => {
+
+    const date = new Date(payment.created_at);
+
+    const monthKey = date.toLocaleDateString("en-PH", {
+      month: "short",
+      year: "numeric"
+    });
+
+    if (!monthlyRevenue[monthKey]) {
+      monthlyRevenue[monthKey] = 0;
+    }
+
+    monthlyRevenue[monthKey] += Number(payment.amount || 0);
+
+  });
+
+
+  const revenueEntries = Object.entries(monthlyRevenue)
+    .sort((a, b) => {
+      const dateA = new Date(a[0]);
+      const dateB = new Date(b[0]);
+
+      return dateA - dateB;
+    });
+
+  const maxRevenue = revenueEntries.length > 0
+    ? Math.max(...revenueEntries.map(([month, amount]) => amount))
+    : 0;
+
+
+  const revenueBars = revenueEntries.length > 0
+
+    ? revenueEntries.map(([month, amount]) => {
+
+        const height =
+          maxRevenue > 0
+            ? Math.max((amount / maxRevenue) * 100, 5)
+            : 5;
+
+        return `
+          <div class="revenue-bar-item">
+
+            <div class="revenue-bar-track">
+
+              <div
+                class="revenue-bar-fill"
+                style="height:${height}%"
+                title="${month}: ${formatPeso(amount)}">
+              </div>
+
+            </div>
+
+            <div class="revenue-amount">
+              ${formatPeso(amount)}
+            </div>
+
+            <div class="revenue-month">
+              ${month}
+            </div>
+
+          </div>
+        `;
+
+      }).join("")
+
+    : `
+        <div class="form-help">
+          No approved payment records yet.
+        </div>
+      `;
+
+
+  // =========================
+  // DISPLAY
+  // =========================
+
+  return `
+    <div class="dashboard-grid">
+
+      <section class="chart-card">
+
+        <h3>Monthly Revenue Chart</h3>
+
+        <div class="revenue-chart-wrapper">
+
+          <div class="revenue-y-axis">
+            <span>${formatPeso(maxRevenue)}</span>
+            <span>${formatPeso(maxRevenue * 0.75)}</span>
+            <span>${formatPeso(maxRevenue * 0.50)}</span>
+            <span>${formatPeso(maxRevenue * 0.25)}</span>
+            <span>₱0.00</span>
+          </div>
+
+          <div class="revenue-chart">
+
+            <div class="revenue-grid">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <div class="revenue-bars">
+              ${revenueBars}
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <section class="chart-card">
+
+        <h3>Vehicle Availability</h3>
+
+        <div class="mini-list">
+
+          <div>
+            <span>Available Vehicles</span>
+            <strong>${availableVehicles}</strong>
+          </div>
+
+          <div>
+            <span>Unavailable / Reserved</span>
+            <strong>${unavailableVehicles}</strong>
+          </div>
+
+          <div>
+            <span>Total Vehicles</span>
+            <strong>${totalVehicles}</strong>
+          </div>
+
+          <div>
+            <span>Availability Rate</span>
+            <strong>${availablePercent}%</strong>
+          </div>
+
+        </div>
+
+        <div
+          class="donut"
+          style="
+            background:
+              conic-gradient(
+                #111 ${availablePercent}%,
+                #ddd ${availablePercent}% 100%
+              );
+          "
+        ></div>
+
+        <div class="form-help">
+          Available: ${availablePercent}% ·
+          Unavailable: ${unavailablePercent}%
+        </div>
+
+      </section>
+
+    </div>
+  `;
 }
 
 function adminCharts(payments, cars, bookings) {
@@ -400,10 +1580,11 @@ const panels = {
   customer: {
     dashboard: async () => {
 
-  const carsHTML = await vehicleCards();
-
-  const bookings = await apiFetch("/my/bookings");
-  const payments = await apiFetch("/payments");
+  const [carsHTML, bookings, payments] = await Promise.all([
+    vehicleCards(),
+    getMyBookings(),
+    getPayments()
+  ]);
 
   const activeBookings = bookings.filter(booking =>
     ["pending", "confirmed", "ongoing"].includes(
@@ -543,8 +1724,8 @@ const panels = {
     "my-bookings": async () => {
 
       try {
-        const bookings = await apiFetch("/my/bookings");
-
+        const bookings = await getMyBookings();
+        const payments = await getPayments();
         if (!bookings.length) {
           return `
             <section class="panel">
@@ -554,20 +1735,79 @@ const panels = {
           `;
         }
 
-        const rows = bookings.map(booking => [
-          "BK-" + booking.id,
-          booking.car
-            ? capitalize(booking.car.brand) + " " + capitalize(booking.car.model)
-            : "Vehicle unavailable",
-          new Date(booking.pickup_date).toLocaleDateString("en-PH"),
-          new Date(booking.return_date).toLocaleDateString("en-PH"),
-          formatPeso(booking.total_price),
-          booking.status
-        ]);
+        const rows = bookings.map(booking => {
+
+          const bookingPayments = payments.filter(payment =>
+            Number(payment.booking_id) === Number(booking.id)
+          );
+
+          const approvedPaid = bookingPayments
+            .filter(payment => payment.status === "approved")
+            .reduce(
+              (total, payment) => total + Number(payment.amount || 0),
+              0
+            );
+
+          const hasPendingPayment = bookingPayments.some(
+            payment => payment.status === "pending"
+          );
+
+          const pickup = new Date(booking.pickup_date);
+          const returned = new Date(booking.return_date);
+
+          const hours = (returned - pickup) / (1000 * 60 * 60);
+
+          const reservationDays =
+            Math.max(1, Math.ceil(hours / 24));
+
+          const requiredReservationFee =
+            reservationDays * 500;
+
+          const remainingBalance =
+            Math.max(
+              0,
+              Number(booking.total_price || 0) - approvedPaid
+            );
+
+          let paymentState;
+
+          if (remainingBalance <= 0) {
+            paymentState =
+              `<span class="status available">Fully Paid</span>`;
+          }
+          else if (hasPendingPayment) {
+            paymentState =
+              `<span class="status reserved">Payment for Verification</span>`;
+          }
+          else if (approvedPaid >= requiredReservationFee) {
+            paymentState =
+              `<span class="status reserved">Balance Due · ${formatPeso(remainingBalance)}</span>`;
+          }
+          else {
+            paymentState =
+              `<span class="status reserved">Reservation Required · ${formatPeso(requiredReservationFee)}</span>`;
+          }
+
+          return [
+            "BK-" + booking.id,
+
+            booking.car
+              ? capitalize(booking.car.brand) + " " + capitalize(booking.car.model)
+              : "Vehicle unavailable",
+
+            new Date(booking.pickup_date).toLocaleString("en-PH"),
+
+            new Date(booking.return_date).toLocaleString("en-PH"),
+
+            formatPeso(booking.total_price),
+
+            paymentState
+          ];
+        });
 
         return table(
           "My Bookings",
-          ["Booking ID", "Vehicle", "Pickup", "Return", "Total", "Status"],
+          ["Booking ID", "Vehicle", "Pickup", "Return", "Total", "Payment Status"],
           rows
         );
 
@@ -592,6 +1832,19 @@ const panels = {
     ? capitalize(selectedCar.brand) + " " + capitalize(selectedCar.model)
     : "Select Vehicle";
 
+  const verificationStatus =
+    currentUser?.verification_status || "pending";
+
+  const isVerified =
+    verificationStatus === "verified";
+
+  const verificationMessage =
+    verificationStatus === "rejected"
+      ? "Your account verification was rejected. Please contact AAV Car Rental Services before making a booking."
+      : verificationStatus === "pending"
+      ? "Your account is still pending verification. You can browse vehicles, but booking is disabled until your account is verified."
+      : "";
+
   const vehicleOptions = [
     `<option value="">Select a vehicle</option>`,
     ...bookingCars.map(car => {
@@ -601,6 +1854,18 @@ const panels = {
   ].join("");
 
   return `
+
+  ${
+  !isVerified
+    ? `
+      <section class="panel">
+        <h3>Account Verification Required</h3>
+        <p>${verificationMessage}</p>
+      </section>
+    `
+    : ""
+}
+
 <div class="booking-layout">
 
   <section class="panel">
@@ -650,6 +1915,7 @@ const panels = {
           <option value="">Select Destination</option>
           <option value="within">Within Manila</option>
           <option value="outside">Outside Manila</option>
+          <option value="unli">Unli Mileage</option>
         </select>
       </label>
 
@@ -676,8 +1942,9 @@ const panels = {
         id="submitBookingBtn"
         class="primary wide"
         type="button"
-        onclick="submitBooking()">
-        Submit Booking
+        onclick="submitBooking()"
+        ${!isVerified ? "disabled" : ""}>
+        ${isVerified ? "Submit Booking" : "Verification Required"}
       </button>
 
       <p id="availabilityMessage" style="color:red; margin-top:10px;"></p>
@@ -705,20 +1972,363 @@ const panels = {
     profile: () => profilePanel("Customer")
   },
   employee: {
-    dashboard: () => `${metrics([["Today's Reservations", "7"], ["Pending Bookings", "12"], ["Active Rentals", "9"], ["Vehicles Available", "18"], ["Vehicles on Trip", "6"], ["Payments Received", "₱58K"]])}<div class="dashboard-grid">${table("Recent Reservations", ["Customer", "Vehicle", "Status"], [["Juan D.", "Toyota Veloz", "Approved"], ["Maria S.", "Toyota Vios", "Pending"], ["Ken A.", "Fortuner", "Ongoing"]])}${table("Recent Payments", ["Customer", "Method", "Status"], [["Juan D.", "GCash", "Verified"], ["Maria S.", "EastWest", "Pending"], ["Ken A.", "GCash", "Verified"]])}</div>`,
-    reservations: () => table("Reservations", ["Booking ID", "Customer", "Vehicle", "Status"], [["BK-1024", "Juan Dela Cruz", "Toyota Toyota Veloz", "Pending"], ["BK-1025", "Maria Santos", "Toyota Vios", "Approved"], ["BK-1026", "Ken Alvarez", "Fortuner", "Ongoing"]]),
-    customers: () => table("Customer Requests", ["Customer", "Requirement", "Status"], [["Juan D.", "Driver's license", "Verified"], ["Maria S.", "Payment receipt", "Review"], ["Ken A.", "Selfie holding ID", "Verified"]]),
-    vehicles: vehicleCards,
+  dashboard: async () => {
+
+    const [cars, bookings, payments] = await Promise.all([
+      getCars(),
+      getBookings(),
+      getPayments()
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const todaysPickups = bookings.filter(booking =>
+      booking.pickup_date?.slice(0, 10) === today
+    ).length;
+
+    const todaysPickupRows = bookings
+      .filter(booking =>
+        booking.pickup_date?.slice(0, 10) === today
+      )
+      .map(booking => [
+        booking.user?.name || "Unknown customer",
+
+        booking.car
+          ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+          : "Vehicle unavailable",
+
+        new Date(booking.pickup_date).toLocaleTimeString("en-PH", {
+          hour: "numeric",
+          minute: "2-digit"
+        }),
+
+        capitalize(booking.status || "pending")
+      ]);
+    
+    const todaysReturnRows = bookings
+      .filter(booking =>
+        booking.return_date?.slice(0, 10) === today
+      )
+      .map(booking => [
+        booking.user?.name || "Unknown customer",
+
+        booking.car
+          ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+          : "Vehicle unavailable",
+
+        new Date(booking.return_date).toLocaleTimeString("en-PH", {
+          hour: "numeric",
+          minute: "2-digit"
+        }),
+
+        capitalize(booking.status || "pending")
+      ]);
+
+    const todaysReturns = bookings.filter(booking =>
+      booking.return_date?.slice(0, 10) === today
+    ).length;
+
+    const pendingReservations = bookings.filter(booking =>
+      booking.status?.toLowerCase() === "pending"
+    ).length;
+
+    const activeRentals = bookings.filter(booking =>
+      ["confirmed", "ongoing"].includes(
+        booking.status?.toLowerCase()
+      )
+    ).length;
+
+    const availableVehicles = cars.filter(car =>
+      Boolean(car.available)
+    ).length;
+
+    const pendingPayments = payments.filter(payment =>
+      payment.status === "pending"
+    ).length;
+
+    return `
+      ${metrics([
+        ["Today's Pickups", todaysPickups],
+        ["Today's Returns", todaysReturns],
+        ["Pending Reservations", pendingReservations],
+        ["Active Rentals", activeRentals],
+        ["Available Vehicles", availableVehicles],
+        ["Pending Payments", pendingPayments]
+      ])}
+
+      ${table(
+        "Today's Pickups",
+        ["Customer", "Vehicle", "Pickup Time", "Status"],
+        todaysPickupRows.length
+          ? todaysPickupRows
+          : [["—", "No pickups scheduled today", "—", "—"]]
+      )}
+
+       ${table(
+        "Today's Returns",
+        ["Customer", "Vehicle", "Return Time", "Status"],
+        todaysReturnRows.length
+          ? todaysReturnRows
+          : [["—", "No returns scheduled today", "—", "—"]]
+      )}
+    `;
+  },
+  reservations: async () => {
+
+    const bookings = await getBookings();
+
+    const rows = bookings.map(booking => [
+      "BK-" + booking.id,
+
+      booking.user?.name || "Unknown customer",
+
+      booking.car
+        ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+        : "Vehicle unavailable",
+
+      new Date(booking.pickup_date).toLocaleString("en-PH"),
+
+      new Date(booking.return_date).toLocaleString("en-PH"),
+
+      capitalize(booking.status || "pending")
+    ]);
+
+    return table(
+      "Reservations",
+      [
+        "Booking ID",
+        "Customer",
+        "Vehicle",
+        "Pickup",
+        "Return",
+        "Status"
+      ],
+      rows.length
+        ? rows
+        : [[
+            "—",
+            "No reservations found",
+            "—",
+            "—",
+            "—",
+            "—"
+          ]]
+    );
+  },
+  
+  rentals: async () => {
+
+    const bookings = await getBookings();
+
+    const rentalBookings = bookings.filter(booking =>
+      ["confirmed", "ongoing", "completed"].includes(
+        booking.status?.toLowerCase()
+      )
+    );
+
+    const rows = rentalBookings.map(booking => {
+
+      const status = booking.status?.toLowerCase();
+
+      let action = "—";
+
+      if (status === "confirmed") {
+        action = `
+          <button
+            type="button"
+            class="primary"
+            onclick="updateRentalStatus(${booking.id}, 'ongoing')">
+            Start Rental
+          </button>
+        `;
+      }
+
+      if (status === "ongoing") {
+        action = `
+          <button
+            type="button"
+            class="primary"
+            onclick="updateRentalStatus(${booking.id}, 'completed')">
+            Complete Rental
+          </button>
+        `;
+      }
+
+      if (status === "completed") {
+        action = `<span class="status available">Completed</span>`;
+      }
+
+      return [
+        "BK-" + booking.id,
+
+        booking.user?.name || "Unknown customer",
+
+        booking.car
+          ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+          : "Vehicle unavailable",
+
+        new Date(booking.pickup_date).toLocaleString("en-PH"),
+
+        new Date(booking.return_date).toLocaleString("en-PH"),
+
+        capitalize(booking.status || "confirmed"),
+
+        action
+      ];
+    });
+
+    return table(
+      "Rentals",
+      [
+        "Booking ID",
+        "Customer",
+        "Vehicle",
+        "Pickup",
+        "Return",
+        "Rental Status",
+        "Action"
+      ],
+      rows.length
+        ? rows
+        : [[
+            "—",
+            "No active or completed rentals found",
+            "—",
+            "—",
+            "—",
+            "—",
+            "—"
+          ]]
+    );
+  },
+  customers: async () => {
+
+    const customers = await apiFetch("/customers");
+
+    const rows = customers.map(customer => {
+
+      const status = customer.verification_status || "pending";
+
+      const statusBadge =
+        status === "verified"
+          ? `<span class="status available">Verified</span>`
+          : status === "rejected"
+          ? `<span class="status trip">Rejected</span>`
+          : `<span class="status reserved">Pending</span>`;
+
+      return [
+        customer.name || "Unknown customer",
+        customer.email || "—",
+        customer.phone || "—",
+        statusBadge
+      ];
+    });
+
+    const customerRows = rows.length
+      ? rows.map(row => `
+          <tr>
+            ${row.map(cell => `<td>${cell}</td>`).join("")}
+          </tr>
+        `).join("")
+      : `
+          <tr>
+            <td>—</td>
+            <td>No customers found</td>
+            <td>—</td>
+          </tr>
+        `;
+
+    return `
+      <section class="table-card">
+
+        <div style="margin-bottom: 18px;">
+          <input
+            type="search"
+            placeholder="Search customer by name, email, or mobile..."
+            oninput="filterEmployeeCustomers(this.value)"
+            style="width: 100%;"
+          >
+        </div>
+
+        <h3>Customers</h3>
+
+        <table
+          class="data-table"
+          id="employeeCustomersTable"
+        >
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Mobile</th>
+              <th>Verification Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${customerRows}
+          </tbody>
+        </table>
+
+      </section>
+    `;
+  },
+    vehicles: employeeVehicleCards,
     payments: () => paymentPanel(),
-    chat: () => table("AI Chat Monitor", ["Customer", "Question", "AI Response"], [["Customer", "What SUVs are available?", "Fortuner, Montero Sport, Everest"], ["Customer", "Documents required?", "Government ID, license, selfie holding ID"]]),
+    chat: async () => {
+
+      const logs = await apiFetch("/chat-logs");
+
+      const rows = logs.map(log => [
+
+        log.user?.name || "Unknown customer",
+
+        log.message,
+
+        log.source || "—",
+
+        new Date(log.created_at).toLocaleString("en-PH"),
+
+        `
+          <button
+            type="button"
+            class="secondary"
+            onclick="viewChatDetails(${log.id})">
+            View Details
+          </button>
+        `
+      ]);
+
+      return table(
+        "AI Chat Monitor",
+        [
+          "Customer",
+          "Question",
+          "Source",
+          "Date & Time",
+          "Action"
+        ],
+        rows.length
+          ? rows
+          : [[
+              "—",
+              "No chat logs found",
+              "—",
+              "—",
+              "—"
+            ]]
+      );
+    },
     reports: () => reportsPanel(),
     profile: () => profilePanel("Employee")
   },
   admin: {
     dashboard: async () => {
-      const cars = await getCars();
-      const bookings = await apiFetch("/bookings");
-      const payments = await apiFetch("/payments");
+      const [cars, bookings, payments] = await Promise.all([
+        getCars(),
+        getBookings(),
+        getPayments()
+      ]);
 
       const totalVehicles = cars.length;
 
@@ -791,72 +2401,211 @@ const panels = {
 
       const customers = await apiFetch("/customers");
 
-      const rows = customers.map(customer => [
-        customer.name,
-        customer.email,
-        customer.phone || "—",
-        capitalize(customer.role || "customer")
-      ]);
+      const rows = customers.map(customer => {
+
+        const verificationStatus =
+          customer.verification_status || "pending";
+
+        const statusBadge =
+          verificationStatus === "verified"
+            ? `<span class="status available">Verified</span>`
+            : verificationStatus === "rejected"
+            ? `<span class="status trip">Rejected</span>`
+            : `<span class="status reserved">Pending</span>`;
+
+        const action = `
+          <button
+            type="button"
+            class="secondary"
+            onclick="viewCustomerRequirements(${customer.id})">
+            View Requirements
+          </button>
+        `;
+
+        return [
+          customer.name || "Unknown customer",
+          customer.email || "—",
+          customer.phone || "—",
+          statusBadge,
+          action
+        ];
+      });
 
       return table(
-        "Customers",
-        ["Name", "Email", "Mobile", "Role"],
+        "Customer Verification",
+        [
+          "Name",
+          "Email",
+          "Mobile",
+          "Verification Status",
+          "Action"
+        ],
         rows.length
           ? rows
-          : [["—", "No customers found", "—", "—"]]
+          : [[
+              "—",
+              "No customers found",
+              "—",
+              "—",
+              "—"
+            ]]
       );
     },
     "vehicle-management": async () => {
 
-  const carsHTML = await vehicleCards();
+  const carsHTML = await adminVehicleCards();
 
   return `
   <section class="panel">
     <h3>Vehicle Information</h3>
 
-    <div class="form-grid">
-      <label>Plate Number<input value="NJG 5062"></label>
-      <label>Vehicle Name<input value="Toyota Vios"></label>
-      <label>Brand<input value="Toyota"></label>
-      <label>Model<input value="Vios"></label>
-      <label>Year<input value="2024"></label>
-      <label>Color<input value="Silver"></label>
+    <form id="vehicleForm" class="form-grid" onsubmit="saveVehicle(event)">
+
+      <label>
+        Brand
+        <input
+          name="brand"
+          type="text"
+          placeholder="e.g. Toyota"
+          required
+        >
+      </label>
+
+      <label>
+        Model
+        <input
+          name="model"
+          type="text"
+          placeholder="e.g. Vios"
+          required
+        >
+      </label>
+
+      <label>
+        Year
+        <input
+          name="year"
+          type="number"
+          placeholder="e.g. 2024"
+          required
+        >
+      </label>
 
       <label>
         Fuel Type
-        <select>
-          <option>Gasoline</option>
-          <option>Diesel</option>
+        <select name="fuel_type" required>
+          <option value="">Select fuel type</option>
+          <option value="gasoline">Gasoline</option>
+          <option value="diesel">Diesel</option>
         </select>
       </label>
 
       <label>
         Transmission
-        <select>
-          <option>Automatic</option>
-          <option>Manual</option>
+        <select name="transmission" required>
+          <option value="">Select transmission</option>
+          <option value="automatic">Automatic</option>
+          <option value="manual">Manual</option>
         </select>
       </label>
 
-      <label>Seating Capacity<input value="5"></label>
-      <label>Rental Price<input value="₱2,000/day"></label>
+      <label>
+        Seating Capacity
+        <input
+          name="seats"
+          type="number"
+          min="1"
+          placeholder="e.g. 5"
+          required
+        >
+      </label>
+
+      <div class="wide">
+        <h3>Rental Rates</h3>
+      </div>
+
+      <label>
+        Within Manila - 12 Hours
+        <input
+          name="within_12hrs"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 1800"
+          required
+        >
+      </label>
+
+      <label>
+        Within Manila - 24 Hours
+        <input
+          name="within_24hrs"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 2000"
+          required
+        >
+      </label>
+
+      <label>
+        Outside Manila - 12 Hours
+        <input
+          name="outside_12hrs"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 2000"
+          required
+        >
+      </label>
+
+      <label>
+        Outside Manila - 24 Hours
+        <input
+          name="outside_24hrs"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 2500"
+          required
+        >
+      </label>
+
+      <label>
+        Unli Mileage - 24 Hours
+        <input
+          name="unli_24hrs"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 2899"
+          required
+        >
+      </label>
 
       <label>
         Availability
-        <select>
-          <option>Available</option>
-          <option>Reserved</option>
-          <option>On Trip</option>
-          <option>Maintenance</option>
+        <select name="available" required>
+          <option value="1">Available</option>
+          <option value="0">Unavailable</option>
         </select>
       </label>
 
-      <label>Upload Vehicle Images<input type="file"></label>
+      <label class="wide">
+        Upload Vehicle Image
+        <input
+          name="image"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+        >
+      </label>
 
-      <button class="primary wide" type="button">
-        Save Vehicle
+      <button class="primary wide" type="submit">
+        Add Vehicle
       </button>
-    </div>
+
+    </form>
   </section>
 
   ${carsHTML}
@@ -864,23 +2613,95 @@ const panels = {
 },    
     reservations: async () => {
 
-      const bookings = await apiFetch("/bookings");
+      const [bookings, payments] = await Promise.all([
+        getBookings(),
+        getPayments()
+      ]); 
 
-      const rows = bookings.map(booking => [
-        "BK-" + booking.id,
+      const rows = bookings.map(booking => {
 
-        booking.user?.name || "Unknown customer",
+        const bookingPayments = payments.filter(payment =>
+          Number(payment.booking_id) === Number(booking.id)
+        );
 
-        booking.car
-          ? capitalize(booking.car.brand) + " " + capitalize(booking.car.model)
-          : "Vehicle unavailable",
+        const approvedPaid = bookingPayments
+          .filter(payment => payment.status === "approved")
+          .reduce(
+            (total, payment) => total + Number(payment.amount || 0),
+            0
+          );
 
-        new Date(booking.pickup_date).toLocaleDateString("en-PH"),
+        const hasPendingPayment = bookingPayments.some(
+          payment => payment.status === "pending"
+        );
 
-        new Date(booking.return_date).toLocaleDateString("en-PH"),
+        const totalPrice = Number(booking.total_price || 0);
 
-        capitalize(booking.status || "pending")
-      ]);
+        const remainingBalance = Math.max(
+          0,
+          totalPrice - approvedPaid
+        );
+
+        const pickup = new Date(booking.pickup_date);
+        const returned = new Date(booking.return_date);
+
+        const hours =
+          (returned - pickup) / (1000 * 60 * 60);
+
+        const reservationDays =
+          Math.max(1, Math.ceil(hours / 24));
+
+        const reservationFee =
+          reservationDays * 500;
+
+        let paymentState;
+
+        if (totalPrice <= 0) {
+
+          paymentState =
+            `<span class="status reserved">No Valid Total</span>`;
+
+        } else if (remainingBalance <= 0) {
+
+          paymentState =
+            `<span class="status available">Fully Paid</span>`;
+        } else if (hasPendingPayment) {
+
+          paymentState =
+            `<span class="status reserved">For Verification</span>`;
+
+        } else if (approvedPaid >= reservationFee) {
+
+          paymentState =
+            `<span class="status reserved">Balance Due · ${formatPeso(remainingBalance)}</span>`;
+
+        } else {
+
+          paymentState =
+            `<span class="status reserved">Reservation Required · ${formatPeso(reservationFee)}</span>`;
+        }
+
+        return [
+          "BK-" + booking.id,
+
+          booking.user?.name || "Unknown customer",
+
+          booking.car
+            ? capitalize(booking.car.brand) + " " +
+              capitalize(booking.car.model)
+            : "Vehicle unavailable",
+
+          new Date(booking.pickup_date).toLocaleString("en-PH"),
+
+          new Date(booking.return_date).toLocaleString("en-PH"),
+
+          formatPeso(totalPrice),
+
+          paymentState,
+
+          `<span class="status reserved">${capitalize(booking.status || "pending")}</span>`
+        ];
+      });
 
       return table(
         "Reservations",
@@ -890,9 +2711,22 @@ const panels = {
           "Vehicle",
           "Pickup",
           "Return",
-          "Status"
+          "Total",
+          "Payment Status",
+          "Booking Status"
         ],
-        rows
+        rows.length
+          ? rows
+          : [[
+              "—",
+              "No bookings found",
+              "—",
+              "—",
+              "—",
+              "—",
+              "—",
+              "—"
+            ]]
       );
     },
     
@@ -962,7 +2796,7 @@ async function paymentPanel() {
   }
 
   try {
-    const payments = await apiFetch("/payments");
+    const payments = await getPayments();
     if (currentRole === "admin") return adminPaymentPanel(payments);
     if (currentRole === "employee") return employeePaymentPanel(payments);
     return await customerPaymentPanel(payments);
@@ -972,12 +2806,73 @@ async function paymentPanel() {
 }
 
 async function customerPaymentPanel(payments) {
-  const bookings = await apiFetch("/my/bookings");
-  const openBookingIds = new Set(payments.filter(payment => ["pending", "approved"].includes(payment.status)).map(payment => payment.booking_id));
-  const payableBookings = bookings.filter(booking => !openBookingIds.has(booking.id) && booking.status !== "rejected");
+  const bookings = await getMyBookings();
+  const pendingBookingIds = new Set(
+  payments
+    .filter(payment => payment.status === "pending")
+    .map(payment => payment.booking_id)
+  );
+
+  const payableBookings = bookings.filter(booking => {
+    if (booking.status === "rejected") {
+      return false;
+    }
+
+    if (pendingBookingIds.has(booking.id)) {
+      return false;
+    }
+
+    const approvedPaid = payments
+      .filter(payment =>
+        Number(payment.booking_id) === Number(booking.id) &&
+        payment.status === "approved"
+      )
+      .reduce((total, payment) => total + Number(payment.amount || 0), 0);
+
+    const remainingBalance =
+      Number(booking.total_price || 0) - approvedPaid;
+
+    return remainingBalance > 0;
+  });
   const bookingOptions = payableBookings.length
-    ? payableBookings.map(booking => `<option value="${booking.id}">#${booking.id} · ${booking.car.brand} ${booking.car.model} (${formatPeso(booking.total_price)})</option>`).join("")
-    : `<option value="">No booking awaiting payment</option>`;
+  ? payableBookings.map(booking => {
+
+      const pickup = new Date(booking.pickup_date);
+      const returned = new Date(booking.return_date);
+
+      const hours = (returned - pickup) / (1000 * 60 * 60);
+
+      // Minimum ₱500, then another ₱500 per started 24-hour block
+      const reservationDays = Math.max(1, Math.ceil(hours / 24));
+      const reservationFee = reservationDays * 500;
+
+      const approvedPaid = payments
+        .filter(payment =>
+          Number(payment.booking_id) === Number(booking.id) &&
+          payment.status === "approved"
+        )
+        .reduce(
+          (total, payment) => total + Number(payment.amount || 0),
+          0
+        );
+
+      const totalPrice = Number(booking.total_price || 0);
+      const remainingBalance = Math.max(0, totalPrice - approvedPaid);
+
+      return `
+        <option
+          value="${booking.id}"
+          data-total="${totalPrice}"
+          data-reservation="${reservationFee}"
+          data-paid="${approvedPaid}"
+          data-remaining="${remainingBalance}"
+        >
+          #${booking.id} · ${booking.car.brand} ${booking.car.model}
+          (${formatPeso(totalPrice)})
+        </option>
+      `;
+    }).join("")
+  : `<option value="">No booking awaiting payment</option>`;
   const history = payments.map(payment => [
     new Date(payment.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }),
     payment.booking?.car ? `#${payment.booking_id} · ${payment.booking.car.brand} ${payment.booking.car.model}` : `Booking #${payment.booking_id}`,
@@ -1023,7 +2918,39 @@ async function customerPaymentPanel(payments) {
       <p class="form-help">Pay the reservation fee shown for your booking, then upload a clear screenshot or photo of the successful transaction. The admin verifies it before approving the reservation.</p>
       <h3>2. Send payment confirmation</h3>
       <form id="paymentForm" class="form-grid" onsubmit="submitPayment(event)">
-        <label>Booking<select name="booking_id" required ${payableBookings.length ? "" : "disabled"}>${bookingOptions}</select></label>
+        <label>
+          Booking
+          <select
+            name="booking_id"
+            id="paymentBooking"
+            onchange="updatePaymentBreakdown()"
+            required
+            ${payableBookings.length ? "" : "disabled"}
+          >
+            ${bookingOptions}
+          </select>
+        </label>
+        <div class="wide mini-list" id="paymentBreakdown">
+          <div>
+            <span>Total Rental Cost</span>
+            <strong id="paymentTotal">₱0.00</strong>
+          </div>
+
+          <div>
+            <span>Required Reservation Fee</span>
+            <strong id="paymentReservation">₱0.00</strong>
+          </div>
+
+          <div>
+            <span>Approved Payment</span>
+            <strong id="paymentPaid">₱0.00</strong>
+          </div>
+
+          <div>
+            <span>Remaining Balance</span>
+            <strong id="paymentRemaining">₱0.00</strong>
+          </div>
+        </div>
         <label>Payment method<select name="method" required><option value="gcash">GCash</option><option value="bank_transfer">Bank transfer</option></select></label>
         <label>Amount sent (₱)<input name="amount" type="number" min="1" step="0.01" placeholder="e.g. 500" required></label>
         <label>Date and time paid<input name="paid_at" type="datetime-local" max="${localDateTimeNow()}" required></label>
@@ -1031,11 +2958,55 @@ async function customerPaymentPanel(payments) {
         <label>Transaction reference no.<input name="reference_number" maxlength="100" required></label>
         <label class="wide">Receipt or proof of payment<input name="proof" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG, or WebP only · maximum 5 MB</small></label>
         <label class="check wide"><input name="customer_confirmed" type="checkbox" required> I confirm that I have already sent this payment and that the details and proof are accurate.</label>
+        <div id="paymentMessage" class="wide form-help"></div>
         <button class="primary wide" type="submit" ${payableBookings.length ? "" : "disabled"}>Send confirmation to admin</button>
       </form>
     </section>
 
   </div>${table("My payment confirmations", ["Submitted", "Booking", "Method", "Amount", "Status"], history.length ? history : [["—", "No confirmations yet", "—", "—", "—"]])}`;
+}
+
+function updatePaymentBreakdown() {
+  const select = document.querySelector("#paymentBooking");
+
+  if (!select || !select.value) return;
+
+  const option = select.options[select.selectedIndex];
+
+  const total = Number(option.dataset.total || 0);
+  const reservation = Number(option.dataset.reservation || 0);
+  const paid = Number(option.dataset.paid || 0);
+  const remaining = Number(option.dataset.remaining || 0);
+  const reservationPaid = paid >= reservation;
+  const amountInput = document.querySelector('input[name="amount"]');
+
+  document.querySelector("#paymentTotal").textContent =
+    formatPeso(total);
+
+  document.querySelector("#paymentReservation").innerHTML =
+    reservationPaid
+      ? `${formatPeso(reservation)} <span class="status approved">Paid</span>`
+      : `${formatPeso(reservation)} <span class="status pending">Required</span>`;
+
+  document.querySelector("#paymentPaid").textContent =
+    formatPeso(paid);
+
+  document.querySelector("#paymentRemaining").textContent =
+    formatPeso(remaining);
+
+  if (amountInput) {
+    if (reservationPaid) {
+      amountInput.placeholder =
+        `Remaining balance: ${formatPeso(remaining)}`;
+
+      amountInput.max = remaining;
+    } else {
+      amountInput.placeholder =
+        `Reservation fee: ${formatPeso(reservation)}`;
+
+      amountInput.max = reservation;
+    }
+  }
 }
 
 function adminPaymentPanel(payments) {
@@ -1058,37 +3029,233 @@ function adminPaymentPanel(payments) {
 }
 
 function employeePaymentPanel(payments) {
+
   const rows = payments.map(payment => [
+
     `#${payment.id}`,
-    `${payment.submitter?.name || "Customer"}<br><small>Booking #${payment.booking_id}</small>`,
-    payment.method === "gcash" ? "GCash" : "Bank transfer",
+
+    `${payment.submitter?.name || "Customer"}
+      <br>
+      <small>Booking #${payment.booking_id}</small>`,
+
+    payment.method === "gcash"
+      ? "GCash"
+      : "Bank transfer",
+
     formatPeso(payment.amount),
+
     paymentStatus(payment.status),
+
+    `
+      <button
+        type="button"
+        class="secondary"
+        onclick="viewEmployeePayment(${payment.id})">
+        View Details
+      </button>
+    `
   ]);
-  return table("Payment confirmations", ["ID", "Customer / booking", "Method", "Amount", "Status"], rows.length ? rows : [["—", "No payments submitted", "—", "—", "—"]]);
+
+  return table(
+    "Payment confirmations",
+    [
+      "ID",
+      "Customer / booking",
+      "Method",
+      "Amount",
+      "Status",
+      "Action"
+    ],
+    rows.length
+      ? rows
+      : [[
+          "—",
+          "No payments submitted",
+          "—",
+          "—",
+          "—",
+          "—"
+        ]]
+  );
+}
+
+async function viewEmployeePayment(paymentId) {
+  try {
+    const payments = await getPayments();
+
+    const payment = payments.find(
+      item => Number(item.id) === Number(paymentId)
+    );
+
+    if (!payment) {
+      alert("Payment record not found.");
+      return;
+    }
+
+    const customerName =
+      payment.submitter?.name || "Customer";
+
+    const vehicleName =
+      payment.booking?.car
+        ? `${capitalize(payment.booking.car.brand)} ${capitalize(payment.booking.car.model)}`
+        : "Vehicle unavailable";
+
+    const method =
+      payment.method === "gcash"
+        ? "GCash"
+        : "Bank Transfer";
+
+    workspaceTitle.textContent = "Payment Details";
+
+    workspaceContent.innerHTML = `
+      <section class="panel">
+
+        <h3>Payment Information</h3>
+
+        <div class="mini-list">
+
+          <div>
+            <span>Payment ID</span>
+            <strong>#${payment.id}</strong>
+          </div>
+
+          <div>
+            <span>Customer</span>
+            <strong>${customerName}</strong>
+          </div>
+
+          <div>
+            <span>Booking</span>
+            <strong>BK-${payment.booking_id}</strong>
+          </div>
+
+          <div>
+            <span>Vehicle</span>
+            <strong>${vehicleName}</strong>
+          </div>
+
+          <div>
+            <span>Payment Method</span>
+            <strong>${method}</strong>
+          </div>
+
+          <div>
+            <span>Amount</span>
+            <strong>${formatPeso(payment.amount)}</strong>
+          </div>
+
+          <div>
+            <span>Payer / Sender Name</span>
+            <strong>${payment.payer_name || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Reference Number</span>
+            <strong>${payment.reference_number || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Date & Time Paid</span>
+            <strong>
+              ${
+                payment.paid_at
+                  ? new Date(payment.paid_at).toLocaleString("en-PH")
+                  : "—"
+              }
+            </strong>
+          </div>
+
+          <div>
+            <span>Status</span>
+            <strong>${paymentStatus(payment.status)}</strong>
+          </div>
+
+        </div>
+
+      </section>
+
+      <section class="panel">
+
+        <h3>Payment Proof</h3>
+
+        <div class="form-grid">
+
+          <button
+            type="button"
+            class="primary"
+            onclick="showPaymentProof(${payment.id})">
+            View Payment Proof
+          </button>
+
+          <button
+            type="button"
+            class="secondary"
+            onclick="renderPanel('payments')">
+            Back to Payments
+          </button>
+
+        </div>
+
+      </section>
+    `;
+
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function submitPayment(event) {
   event.preventDefault();
+
   const form = event.currentTarget;
+  const message = document.querySelector("#paymentMessage");
+
   if (!form.reportValidity()) return;
+
   const button = form.querySelector("button[type='submit']");
+
+  if (message) {
+    message.textContent = "";
+  }
+
   button.disabled = true;
   button.textContent = "Sending…";
+
   try {
     const paymentData = new FormData(form);
+
     const paidAt = paymentData.get("paid_at");
     const paidAtDate = new Date(paidAt);
+
     if (Number.isNaN(paidAtDate.getTime())) {
       throw new Error("Please enter a valid payment date and time.");
     }
+
     paymentData.set("paid_at", paidAtDate.toISOString());
 
-    await apiFetch("/payments", { method: "POST", body: paymentData });
-    alert("Payment confirmation sent. It will remain for verification until an admin approves it.");
-    renderPanel("payments");
+    await apiFetch("/payments", {
+      method: "POST",
+      body: paymentData
+    });
+
+    await getPayments(true);
+
+    if (message) {
+      message.textContent =
+        "✅ Payment confirmation sent successfully. Please wait for admin verification.";
+    }
+
+    button.textContent = "Sent";
+
+    setTimeout(() => {
+      renderPanel("payments");
+    }, 1500);
+
   } catch (error) {
-    alert(error.message);
+    if (message) {
+      message.textContent = "❌ " + error.message;
+    }
+
     button.disabled = false;
     button.textContent = "Send confirmation to admin";
   }
@@ -1099,10 +3266,144 @@ async function reviewPayment(paymentId, status) {
   if (status === "rejected" && !reviewNote?.trim()) return;
   try {
     await apiFetch(`/payments/${paymentId}/review`, { method: "PATCH", body: JSON.stringify({ status, review_note: reviewNote }) });
+    await getPayments(true);
+    await getBookings(true);
     alert(`Payment ${status}.`);
     renderPanel("payments");
   } catch (error) {
     alert(error.message);
+  }
+}
+
+async function updateRentalStatus(bookingId, status) {
+  try {
+    const actionText = status === "ongoing"
+      ? "start this rental"
+      : "complete this rental";
+
+    const confirmed = confirm(
+      `Are you sure you want to ${actionText}?`
+    );
+
+    if (!confirmed) return;
+
+    await apiFetch(`/bookings/${bookingId}/rental-status`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: status
+      })
+    });
+
+    await getBookings(true);
+    await getCars(true);
+
+    alert(
+      status === "ongoing"
+        ? "Rental started successfully."
+        : "Rental completed successfully."
+    );
+
+    renderPanel("rentals");
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function viewChatDetails(logId) {
+  try {
+
+    const logs = await apiFetch("/chat-logs");
+
+    const log = logs.find(
+      item => Number(item.id) === Number(logId)
+    );
+
+    if (!log) {
+      alert("Chat log not found.");
+      return;
+    }
+
+    const formattedResponse = (log.response || "No response")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/^\*\s+/gm, "• ")
+      .replace(/^-\s+/gm, "• ")
+      .replace(/\n{2,}/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+
+    workspaceTitle.textContent = "AI Chat Details";
+
+    workspaceContent.innerHTML = `
+      <section class="panel">
+
+        <h3>Chat Information</h3>
+
+        <div class="mini-list">
+
+          <div>
+            <span>Customer</span>
+            <strong>
+              ${log.user?.name || "Unknown customer"}
+            </strong>
+          </div>
+
+          <div>
+            <span>Source</span>
+            <strong>${log.source || "—"}</strong>
+          </div>
+
+          <div>
+            <span>Date & Time</span>
+            <strong>
+              ${new Date(log.created_at).toLocaleString("en-PH")}
+            </strong>
+          </div>
+
+        </div>
+
+      </section>
+
+      <section class="panel">
+
+        <h3>Customer Question</h3>
+
+        <p>
+          ${log.message || "No question available."}
+        </p>
+
+      </section>
+
+      <section class="panel">
+
+        <h3>AI Response</h3>
+
+        <div>
+          ${formattedResponse}
+        </div>
+
+      </section>
+
+      <section class="panel">
+
+        <button
+          type="button"
+          class="secondary"
+          onclick="renderPanel(currentRole === 'admin' ? 'logs' : 'chat')">
+          Back to AI Chat Logs
+        </button>
+
+      </section>
+    `;
+
+  } catch (error) {
+
+    console.error("Failed to load chat details:", error);
+
+    alert(
+      error.message ||
+      "Unable to load chat details."
+    );
   }
 }
 
@@ -1202,8 +3503,150 @@ async function notificationsPanel() {
 }
 
 
-function reportsPanel() {
-  return `${charts()}<div class="dashboard-grid">${table("Booking Trends", ["Month", "Bookings", "Utilization"], [["May", "82", "68%"], ["June", "96", "74%"], ["July", "121", "81%"]])}${table("Payment Summary", ["Method", "Transactions", "Amount"], [["GCash", "84", "₱210K"], ["Bank Transfer", "42", "₱168K"]])}</div>`;
+async function reportsPanel() {
+
+  const [payments, bookings, cars] = await Promise.all([
+    getPayments(),
+    getBookings(),
+    getCars()
+  ]);
+
+  const chartsHTML = await charts(cars, payments);
+
+  // =========================
+  // PAYMENT SUMMARY
+  // =========================
+
+  const approvedPayments = payments.filter(
+    payment => payment.status === "approved"
+  );
+
+  const gcashPayments = approvedPayments.filter(
+    payment => payment.method === "gcash"
+  );
+
+  const gcashTotal = gcashPayments.reduce(
+    (total, payment) => total + Number(payment.amount || 0),
+    0
+  );
+
+  const bankPayments = approvedPayments.filter(
+    payment => payment.method === "bank_transfer"
+  );
+
+  const bankTotal = bankPayments.reduce(
+    (total, payment) => total + Number(payment.amount || 0),
+    0
+  );
+
+  const paymentRows = [
+    [
+      "GCash",
+      gcashPayments.length,
+      formatPeso(gcashTotal)
+    ],
+    [
+      "Bank Transfer",
+      bankPayments.length,
+      formatPeso(bankTotal)
+    ]
+  ];
+
+
+  // =========================
+  // BOOKING TRENDS
+  // =========================
+
+  const bookingGroups = {};
+
+  bookings.forEach(booking => {
+
+    const date = new Date(booking.pickup_date);
+
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const key =
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+
+    if (!bookingGroups[key]) {
+      bookingGroups[key] = {
+        date: new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          1
+        ),
+        bookings: [],
+        vehicleIds: new Set()
+      };
+    }
+
+    bookingGroups[key].bookings.push(booking);
+
+    if (booking.car_id) {
+      bookingGroups[key].vehicleIds.add(
+        Number(booking.car_id)
+      );
+    }
+  });
+
+  const totalVehicles = cars.length;
+
+  const bookingRows = Object.values(bookingGroups)
+    .sort((a, b) => a.date - b.date)
+    .map(group => {
+
+      const month = group.date.toLocaleDateString(
+        "en-PH",
+        {
+          month: "long",
+          year: "numeric"
+        }
+      );
+
+      const bookingCount = group.bookings.length;
+
+      const utilization =
+        totalVehicles > 0
+          ? Math.round(
+              (group.vehicleIds.size / totalVehicles) * 100
+            )
+          : 0;
+
+      return [
+        month,
+        bookingCount,
+        `${utilization}%`
+      ];
+    });
+
+
+  // =========================
+  // REPORT OUTPUT
+  // =========================
+
+  return `
+    ${chartsHTML}
+
+    <div class="dashboard-grid">
+
+      ${table(
+        "Booking Trends",
+        ["Month", "Bookings", "Utilization"],
+        bookingRows.length
+          ? bookingRows
+          : [["—", "0", "0%"]]
+      )}
+
+      ${table(
+        "Payment Summary",
+        ["Method", "Transactions", "Amount"],
+        paymentRows
+      )}
+
+    </div>
+  `;
 }
 
 
@@ -1212,10 +3655,19 @@ function profilePanel(role) {
   const name = currentUser?.name || "";
   const email = currentUser?.email || "";
   const phone = currentUser?.phone || "";
+  const address = currentUser?.address || "";
+  const licenseNumber = currentUser?.driver_license_number || "";
+
+  const governmentIdSubmitted = Boolean(currentUser?.government_id_path);
+  const driverLicenseSubmitted = Boolean(currentUser?.driver_license_path);
+  const selfieIdSubmitted = Boolean(currentUser?.selfie_id_path);
 
   return `
     <section class="panel">
+
       <h3>${role} Profile</h3>
+
+      <h4>Personal Information</h4>
 
       <div class="form-grid">
 
@@ -1236,14 +3688,77 @@ function profilePanel(role) {
 
         <label>
           Address
-          <input value="" placeholder="No address added yet">
+          <input
+            value="${address}"
+            placeholder="No address added yet"
+            readonly
+          >
         </label>
 
-        <button class="primary wide" type="button">
-          Save Profile
-        </button>
-
       </div>
+
+      ${
+        role === "Customer"
+          ? `
+            <hr>
+
+            <h4>Verification Information</h4>
+
+            <div class="form-grid">
+
+              <label>
+                Driver's License Number
+                <input
+                  value="${licenseNumber}"
+                  placeholder="No driver's license number"
+                  readonly
+                >
+              </label>
+
+            </div>
+
+            <h4>Required Documents</h4>
+
+            <div class="form-grid">
+
+              <div>
+                <strong>Government ID</strong>
+                <p>
+                  ${
+                    governmentIdSubmitted
+                      ? "✅ Submitted"
+                      : "❌ Not submitted"
+                  }
+                </p>
+              </div>
+
+              <div>
+                <strong>Driver's License</strong>
+                <p>
+                  ${
+                    driverLicenseSubmitted
+                      ? "✅ Submitted"
+                      : "❌ Not submitted"
+                  }
+                </p>
+              </div>
+
+              <div>
+                <strong>Selfie Holding ID</strong>
+                <p>
+                  ${
+                    selfieIdSubmitted
+                      ? "✅ Submitted"
+                      : "❌ Not submitted"
+                  }
+                </p>
+              </div>
+
+            </div>
+          `
+          : ""
+      }
+
     </section>
   `;
 }
@@ -1289,15 +3804,25 @@ chatForm.addEventListener("submit", async event => {
     lowerQuestion.includes("id kailangan") ||
     lowerQuestion.includes("kailangan dalhin")
   ) {
-    addChat("bot", "Here are the rental requirements:");
+
+    const requirementsReply =
+      "Here are the rental requirements. Please check the image for the complete list.";
+
+    addChat("bot", requirementsReply);
     addChatImage("assets/requirements.jpg");
-    return;
-  }
 
-  const localReply = aiReply(question);
+    try {
+      await apiFetch("/chat/log", {
+        method: "POST",
+        body: JSON.stringify({
+          message: question,
+          response: requirementsReply
+        })
+      });
+    } catch (error) {
+      console.error("Failed to save requirements chat log:", error);
+    }
 
-  if (localReply) {
-    addChat("bot", localReply);
     return;
   }
 
@@ -1493,51 +4018,113 @@ function calculateTotal() {
   const difference = returned - pickup;
 
   if (difference <= 0) {
-    alert("Return date/time must be after pickup date/time.");
+    const message = document.querySelector("#availabilityMessage");
+
+    if (message) {
+      message.textContent =
+        "❌ Return date and time must be after pickup date and time.";
+      message.style.color = "crimson";
+    }
+
+    document.querySelector("#rentalDuration").value = "";
+    document.querySelector("#totalCost").value = "";
+
     return;
   }
 
   const hours = difference / (1000 * 60 * 60);
 
   let durationValue;
+  let durationType;
 
-  if (hours <= 12) {
-    durationValue = 0.5;
-    document.querySelector("#rentalDuration").value = "12 Hours";
+
+  // UNLI MILEAGE
+  // Always uses the 24-hour rate
+  if (destination === "unli") {
+
+    const days = Math.ceil(hours / 24);
+
+    durationValue = days;
+    durationType = "24hrs";
+
+    document.querySelector("#rentalDuration").value =
+      days === 1
+        ? "24 Hours - Unli Mileage"
+        : `${days} Days - Unli Mileage`;
   }
-  else if (hours <= 24) {
-      durationValue = 1;
-      document.querySelector("#rentalDuration").value = "24 Hours";
-  }
+
+
+  // REGULAR WITHIN / OUTSIDE MANILA
   else {
+
+    if (hours <= 12) {
+
+      durationValue = 0.5;
+      durationType = "12hrs";
+
+      document.querySelector("#rentalDuration").value = "12 Hours";
+    }
+
+    else if (hours <= 24) {
+
+      durationValue = 1;
+      durationType = "24hrs";
+
+      document.querySelector("#rentalDuration").value = "24 Hours";
+    }
+
+    else {
+
       const days = Math.ceil(hours / 24);
+
       durationValue = days;
+      durationType = "24hrs";
+
       document.querySelector("#rentalDuration").value = `${days} Days`;
+    }
   }
 
-  const durationType = durationValue === 0.5 ? "12hrs" : "24hrs";
-  const rate = selectedCar.rates?.find(item => item.location === destination && item.duration === durationType);
+
+  const rate = selectedCar.rates?.find(item =>
+    item.location === destination &&
+    item.duration === durationType
+  );
+
 
   if (!rate) {
+
     document.querySelector("#totalCost").value = "Rate unavailable";
     document.querySelector("#summaryReservation").textContent = "—";
     document.querySelector("#summaryTotal").textContent = "Rate unavailable";
+
     return;
   }
 
-  const total = Number(rate.price) * (durationType === "12hrs" ? 1 : durationValue);
 
-  document.querySelector("#totalCost").value = "₱" + total.toLocaleString();
+  const total =
+    Number(rate.price) *
+    (durationType === "12hrs" ? 1 : durationValue);
+
+
+  document.querySelector("#totalCost").value =
+    "₱" + total.toLocaleString();
+
 
   document.querySelector("#summaryDuration").textContent =
     document.querySelector("#rentalDuration").value;
 
+
+  const reservationFee = Math.ceil(durationValue) * 500;
+
   document.querySelector("#summaryReservation").textContent =
-    "₱" + (durationValue * 500).toLocaleString();
+    "₱" + reservationFee.toLocaleString();
+
 
   document.querySelector("#summaryTotal").textContent =
     "₱" + total.toLocaleString();
-    checkAvailability();
+
+
+  checkAvailability();
 }
 
 async function checkAvailability() {
@@ -1548,8 +4135,23 @@ async function checkAvailability() {
 
   const pickupDate = document.querySelector("#pickupDate").value;
   const returnDate = document.querySelector("#returnDate").value;
+  const pickupTime = document.querySelector("#pickupTime").value;
+  const returnTime = document.querySelector("#returnTime").value;
 
-  if (!pickupDate || !returnDate) return;
+  const submitBtn = document.querySelector("#submitBookingBtn");
+  const message = document.querySelector("#availabilityMessage");
+
+  if (!submitBtn || !message) return;
+
+  // Huwag muna mag-check hangga't incomplete ang schedule
+  if (!pickupDate || !returnDate || !pickupTime || !returnTime) {
+    message.textContent = "";
+    submitBtn.disabled = false;
+    return;
+  }
+
+  const pickupDateTime = `${pickupDate} ${pickupTime}:00`;
+  const returnDateTime = `${returnDate} ${returnTime}:00`;
 
   try {
 
@@ -1557,37 +4159,43 @@ async function checkAvailability() {
       method: "POST",
       body: JSON.stringify({
         car_id: selectedCar.id,
-        pickup_date: pickupDate,
-        return_date: returnDate
+        pickup_date: pickupDateTime,
+        return_date: returnDateTime
       })
     });
 
-    console.log("Availability Result:", result);
+    if (!result.available) {
 
-    const submitBtn = document.querySelector("#submitBookingBtn");
-    const message = document.querySelector("#availabilityMessage");
+      message.textContent =
+        "❌ This vehicle is already reserved for the selected date and time. Please choose another schedule.";
 
-  if (!result.available) {
+      message.style.color = "crimson";
+      submitBtn.disabled = true;
 
-    message.textContent = "❌ This vehicle is already reserved for the selected dates.";
-    submitBtn.disabled = true;
+    } else {
 
-  } else {
+      message.textContent =
+        "✅ This vehicle is available for the selected date and time.";
 
-    message.textContent = "";
-    submitBtn.disabled = false;
-
-  }
+      message.style.color = "green";
+      submitBtn.disabled = false;
+    }
 
   } catch (error) {
 
     console.error(error);
 
-  }
+    message.textContent =
+      "❌ Unable to check vehicle availability right now.";
 
+    message.style.color = "crimson";
+    submitBtn.disabled = true;
+  }
 }
 
 async function submitBooking() {
+
+  const message = document.querySelector("#availabilityMessage");
 
   const pickupDate = document.querySelector("#pickupDate").value;
   const returnDate = document.querySelector("#returnDate").value;
@@ -1595,15 +4203,46 @@ async function submitBooking() {
   const returnTime = document.querySelector("#returnTime").value;
   const destination = document.querySelector("#tripDestination").value;
 
+  // Clear previous message
+  if (message) {
+    message.textContent = "";
+  }
 
   if (!selectedCar) {
-    alert("Please select a vehicle first.");
+    if (message) {
+      message.textContent = "❌ Please select a vehicle first.";
+      message.style.color = "crimson";
+    }
     return;
   }
 
+  if (!pickupDate) {
+    message.textContent = "❌ Please select a pickup date.";
+    message.style.color = "crimson";
+    return;
+  }
 
-  if (!pickupDate || !pickupTime || !returnDate || !returnTime || !destination) {
-    alert("Please complete the pickup/return date and time, then select a trip destination.");
+  if (!pickupTime) {
+    message.textContent = "❌ Please select a pickup time.";
+    message.style.color = "crimson";
+    return;
+  }
+
+  if (!returnDate) {
+    message.textContent = "❌ Please select a return date.";
+    message.style.color = "crimson";
+    return;
+  }
+
+  if (!returnTime) {
+    message.textContent = "❌ Please select a return time.";
+    message.style.color = "crimson";
+    return;
+  }
+
+  if (!destination) {
+    message.textContent = "❌ Please select a trip destination.";
+    message.style.color = "crimson";
     return;
   }
 
@@ -1611,88 +4250,82 @@ async function submitBooking() {
   const returned = new Date(`${returnDate}T${returnTime}`);
 
   const difference = returned - pickup;
+
   if (difference <= 0) {
-    alert("Return date and time must be after pickup date and time.");
+    if (message) {
+      message.textContent =
+        "❌ Return date and time must be after pickup date and time.";
+      message.style.color = "crimson";
+    }
     return;
   }
+
   const hours = difference / (1000 * 60 * 60);
 
   let duration;
 
-  if (hours <= 12) {
-      duration = "12hrs";
+  if (destination === "unli") {
+    duration = "24hrs";
+  } else if (hours <= 12) {
+    duration = "12hrs";
   } else {
-      duration = "24hrs";
+    duration = "24hrs";
   }
 
   const bookingData = {
-  car_id: selectedCar.id,
-  pickup_date: pickupDate,
-  return_date: returnDate,
-  location: destination,
-  duration: duration
+    car_id: selectedCar.id,
+    pickup_date: `${pickupDate} ${pickupTime}:00`,
+    return_date: `${returnDate} ${returnTime}:00`,
+    location: destination,
+    duration: duration
   };
 
   console.log(bookingData);
 
+  const submitBtn = document.querySelector("#submitBookingBtn");
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+  }
 
   try {
 
-    await apiFetch("/bookings", { method: "POST", body: JSON.stringify(bookingData) });
-    alert("Booking submitted successfully. You can now send your payment confirmation.");
-    renderPanel("payments");
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    alert(error.message);
-  }
-
-}
-
-const registerForm = document.querySelector("#registerForm");
-
-registerForm.addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    const firstName = document.querySelector("#firstName").value;
-    const lastName = document.querySelector("#lastName").value;
-    const email = document.querySelector("#registerEmail").value;
-    const phone = document.querySelector("#registerPhone").value;
-    const password = document.querySelector("#registerPassword").value;
-
-    const name = firstName + " " + lastName;
-
-    try {
-    const response = await fetch(`${API_URL}/register`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        body: JSON.stringify({
-            name: name,
-            email: email,
-            phone: phone,
-            password: password
-        })
+    await apiFetch("/bookings", {
+      method: "POST",
+      body: JSON.stringify(bookingData)
     });
 
-    const data = await response.json();
+    await getMyBookings(true);
+    await getBookings(true);
 
-    if (response.ok) {
-        alert("Registration successful!");
-        setView("login");
-    } else {
-        console.log(data);
-        alert("Registration failed.");
+    if (message) {
+      message.textContent =
+        "✅ Booking submitted successfully. Redirecting to payment...";
+      message.style.color = "green";
     }
 
+    if (submitBtn) {
+      submitBtn.textContent = "Submitted";
+    }
+
+    setTimeout(() => {
+      renderPanel("payments");
+    }, 1500);
+
   } catch (error) {
+
     console.error(error);
-    alert("Cannot connect to the server.");
+
+    if (message) {
+      message.textContent = "❌ " + error.message;
+      message.style.color = "crimson";
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Booking";
+    }
   }
-});
+}
 

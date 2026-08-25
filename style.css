@@ -496,3 +496,130 @@ textarea { min-height: 92px; padding-block: 12px; resize: vertical; }
   margin: 12px auto;
 }
 
+.revenue-chart {
+  height: 230px;
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  padding-top: 35px;
+}
+
+.revenue-bar-item {
+  flex: 1;
+  height: 100%;
+  min-width: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.revenue-bar {
+  width: 70%;
+  max-width: 90px;
+  min-height: 5px;
+  background: linear-gradient(to top, #666, #111);
+  border-radius: 8px 8px 0 0;
+}
+
+.revenue-amount {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.revenue-month {
+  font-size: 12px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.revenue-chart-wrapper {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.revenue-y-axis {
+  height: 260px;
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+}
+
+.revenue-chart {
+  position: relative;
+  flex: 1;
+  height: 260px;
+  border-left: 1px solid #ddd;
+  border-bottom: 1px solid #bbb;
+}
+
+.revenue-grid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.revenue-grid span {
+  border-top: 1px solid #eee;
+  width: 100%;
+}
+
+.revenue-bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 24px;
+  padding: 0 30px;
+}
+
+.revenue-bar-item {
+  position: relative;
+  height: 100%;
+  flex: 1;
+  max-width: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.revenue-bar-track {
+  width: 70%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.revenue-bar-fill {
+  width: 100%;
+  background: linear-gradient(to top, #666, #111);
+  border-radius: 8px 8px 0 0;
+}
+
+.revenue-amount {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.revenue-month {
+  position: absolute;
+  top: calc(100% + 10px);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
