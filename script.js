@@ -197,6 +197,29 @@ async function getMyBookings(forceRefresh = false) {
   return bookings;
 }
 
+let settingsCache = null;
+let settingsCacheTime = 0;
+
+async function getSystemSettings(forceRefresh = false) {
+
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    settingsCache &&
+    now - settingsCacheTime < 30000
+  ) {
+    return settingsCache;
+  }
+
+  const settings = await apiFetch("/settings");
+
+  settingsCache = settings;
+  settingsCacheTime = now;
+
+  return settings;
+}
+
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -766,6 +789,19 @@ async function renderPanel(panel) {
   const content = await panels[currentRole][panel]();
 
   workspaceContent.innerHTML = content;
+
+  if (panel === "tracking" && currentRole === "admin") {
+    setTimeout(async () => {
+
+      const select =
+        document.querySelector("#trackingVehicle");
+
+      if (!select || !select.value) return;
+
+      await changeTrackedVehicle(select.value);
+
+    }, 0);
+  }
 
   if (panel === "payments" && currentRole === "customer") {
     setTimeout(() => {
@@ -1726,6 +1762,11 @@ const panels = {
       try {
         const bookings = await getMyBookings();
         const payments = await getPayments();
+
+        const settings = await getSystemSettings();
+
+        const reservationFeePerDay =
+          Number(settings.reservation_fee || 500);
         if (!bookings.length) {
           return `
             <section class="panel">
@@ -1761,7 +1802,7 @@ const panels = {
             Math.max(1, Math.ceil(hours / 24));
 
           const requiredReservationFee =
-            reservationDays * 500;
+            reservationDays * reservationFeePerDay;
 
           const remainingBalance =
             Math.max(
@@ -2074,6 +2115,11 @@ const panels = {
     `;
   },
   reservations: async () => {
+
+    const settings = await getSystemSettings();
+
+    const reservationFeePerDay =
+      Number(settings.reservation_fee || 500);
 
     const bookings = await getBookings();
 
@@ -2618,6 +2664,11 @@ const panels = {
         getPayments()
       ]); 
 
+      const settings = await getSystemSettings();
+
+      const reservationFeePerDay =
+        Number(settings.reservation_fee || 500);
+
       const rows = bookings.map(booking => {
 
         const bookingPayments = payments.filter(payment =>
@@ -2652,7 +2703,7 @@ const panels = {
           Math.max(1, Math.ceil(hours / 24));
 
         const reservationFee =
-          reservationDays * 500;
+          reservationDays * reservationFeePerDay;
 
         let paymentState;
 
@@ -2734,10 +2785,107 @@ const panels = {
     tracking: () => trackingPanel(),
     reports: () => reportsPanel(),
     logs: () => panels.employee.chat(),
-    settings: () => `<section class="panel"><h3>System Settings</h3><div class="form-grid"><label>Reservation Fee<input value="₱500/day"></label><label>Payment Methods<input value="GCash, Bank Transfer"></label><label class="wide">Rental Policy<textarea>Reservation is not refundable if client wishes to cancel. Fee is deductible from total rent amount.</textarea></label><button class="primary wide" type="button">Update Settings</button></div></section>`,
+    settings: async () => {
+
+      const settings = await apiFetch("/settings");
+
+      return `
+        <section class="panel">
+          <h3>System Settings</h3>
+
+          <form
+            class="form-grid"
+            onsubmit="saveSystemSettings(event)"
+          >
+
+            <label>
+              Reservation Fee
+              <input
+                type="number"
+                id="settingsReservationFee"
+                value="${Number(settings.reservation_fee)}"
+                min="0"
+                required
+              >
+            </label>
+
+            <label>
+              Payment Methods
+              <input
+                type="text"
+                id="settingsPaymentMethods"
+                value="${settings.payment_methods || ""}"
+                required
+              >
+            </label>
+
+            <label class="wide">
+              Rental Policy
+              <textarea
+                id="settingsRentalPolicy"
+              >${settings.rental_policy || ""}</textarea>
+            </label>
+
+            <button
+              class="primary wide"
+              type="submit"
+            >
+              Update Settings
+            </button>
+
+          </form>
+
+        </section>
+      `;
+    },    
     profile: () => profilePanel("Admin")
   }
 };
+
+async function saveSystemSettings(event) {
+
+  event.preventDefault();
+
+  try {
+
+    const reservationFee =
+      document.querySelector("#settingsReservationFee").value;
+
+    const paymentMethods =
+      document.querySelector("#settingsPaymentMethods").value.trim();
+
+    const rentalPolicy =
+      document.querySelector("#settingsRentalPolicy").value.trim();
+
+    const response = await apiFetch("/settings", {
+      method: "PATCH",
+      body: JSON.stringify({
+        reservation_fee: reservationFee,
+        payment_methods: paymentMethods,
+        rental_policy: rentalPolicy
+      })
+    });
+
+    settingsCache = response.settings;
+    settingsCacheTime = Date.now();
+
+    alert(
+      response.message ||
+      "Settings updated successfully."
+    );
+
+    await renderPanel("settings");
+
+  } catch (error) {
+
+    console.error("Failed to update settings:", error);
+
+    alert(
+      error.message ||
+      "Failed to update settings."
+    );
+  }
+}
 
 
 function bookingSummary() {
@@ -2806,6 +2954,11 @@ async function paymentPanel() {
 }
 
 async function customerPaymentPanel(payments) {
+  const settings = await getSystemSettings();
+
+  const reservationFeePerDay =
+    Number(settings.reservation_fee || 500);
+
   const bookings = await getMyBookings();
   const pendingBookingIds = new Set(
   payments
@@ -2844,7 +2997,8 @@ async function customerPaymentPanel(payments) {
 
       // Minimum ₱500, then another ₱500 per started 24-hour block
       const reservationDays = Math.max(1, Math.ceil(hours / 24));
-      const reservationFee = reservationDays * 500;
+      const reservationFee =
+        reservationDays * reservationFeePerDay;
 
       const approvedPaid = payments
         .filter(payment =>
@@ -3418,8 +3572,243 @@ async function showPaymentProof(paymentId) {
   }
 }
 
-function trackingPanel() {
-  return `<div class="tracking-layout"><section class="map-card"><h3>Interactive Map</h3><div class="map-visual"><span class="route-line"></span><span class="pin pickup"></span><span class="pin destination"></span><span class="pin car">${icon("i-car")}</span></div></section><aside class="panel"><h3>Vehicle Tracking</h3><div class="summary-line"><span>Vehicle location</span><strong>BGC, Taguig</strong></div><div class="summary-line"><span>Current status</span><strong>On Trip</strong></div><div class="summary-line"><span>Pickup point</span><strong>AAV Office</strong></div><div class="summary-line"><span>Destination</span><strong>NAIA Terminal 3</strong></div><div class="summary-line"><span>Estimated Arrival Time</span><strong>28 min</strong></div><div class="mini-list"><div><span>Available</span><strong>18</strong></div><div><span>Reserved</span><strong>7</strong></div><div><span>Returned</span><strong>11</strong></div><div><span>Maintenance</span><strong>2</strong></div></div></aside></div>`;
+async function trackingPanel() {
+
+  const cars = await getCars();
+
+  const trackedCars = cars.filter(
+    car => car.traccar_device_id
+  );
+
+  const vehicleOptions = trackedCars.map(car => `
+    <option value="${car.id}">
+      ${capitalize(car.brand)} ${capitalize(car.model)}
+    </option>
+  `).join("");
+
+  return `
+    <div class="tracking-layout">
+
+      <section class="map-card">
+
+        <div class="tracking-header">
+          <h3>Interactive Map</h3>
+
+          <label>
+            Select Vehicle
+            <select
+              id="trackingVehicle"
+              onchange="changeTrackedVehicle(this.value)"
+            >
+              ${vehicleOptions}
+            </select>
+          </label>
+        </div>
+
+        <div
+          id="vehicleMap"
+          class="map-visual">
+        </div>
+
+      </section>
+
+      <aside class="panel">
+
+        <h3>Vehicle Tracking</h3>
+
+        <div class="summary-line">
+          <span>Vehicle</span>
+          <strong id="trackVehicle">-</strong>
+        </div>
+
+        <div class="summary-line">
+          <span>Vehicle location</span>
+          <strong id="trackLocation">Loading...</strong>
+        </div>
+
+        <div class="summary-line">
+          <span>Current status</span>
+          <strong id="trackStatus">-</strong>
+        </div>
+
+        <div class="summary-line">
+          <span>Speed</span>
+          <strong id="trackSpeed">-</strong>
+        </div>
+
+        <div class="summary-line">
+          <span>Last updated</span>
+          <strong id="trackUpdated">-</strong>
+        </div>
+
+      </aside>
+
+    </div>
+  `;
+}
+
+async function changeTrackedVehicle(vehicleId) {
+
+  if (!vehicleId) return;
+
+  const cars = await getCars();
+
+  const car = cars.find(
+    car => Number(car.id) === Number(vehicleId)
+  );
+
+  const trackVehicle =
+    document.querySelector("#trackVehicle");
+
+  if (trackVehicle && car) {
+    trackVehicle.textContent =
+      `${capitalize(car.brand)} ${capitalize(car.model)}`;
+  }
+
+  await initVehicleTracking(vehicleId);
+}
+
+let vehicleMapInstance = null;
+let vehicleMarker = null;
+let trackingInterval = null;
+let animationFrame = null;
+
+function animateMarkerTo(targetLatLng, durationMs) {
+  if (!vehicleMarker) return;
+
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
+
+  const start = vehicleMarker.getLatLng();
+  const startTime = performance.now();
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / durationMs, 1);
+
+    const lat =
+      start.lat + (targetLatLng[0] - start.lat) * t;
+
+    const lng =
+      start.lng + (targetLatLng[1] - start.lng) * t;
+
+    vehicleMarker.setLatLng([lat, lng]);
+
+    if (t < 1) {
+      animationFrame = requestAnimationFrame(step);
+    }
+  }
+
+  animationFrame = requestAnimationFrame(step);
+}
+
+async function initVehicleTracking(vehicleId = 2) {
+
+  // Remove old map if tracking page was already opened before
+  if (vehicleMapInstance) {
+    vehicleMapInstance.remove();
+    vehicleMapInstance = null;
+  }
+
+  vehicleMarker = null;
+
+  if (trackingInterval) {
+    clearInterval(trackingInterval);
+  }
+
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
+
+  const POLL_INTERVAL_MS = 10000;
+
+  // Create Leaflet map
+  vehicleMapInstance = L.map("vehicleMap")
+    .setView([14.5995, 120.9842], 14);
+
+  // OpenStreetMap tiles
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      attribution: "© OpenStreetMap contributors",
+    }
+  ).addTo(vehicleMapInstance);
+
+
+  async function poll() {
+    try {
+
+      const data = await apiFetch(
+        `/vehicles/${vehicleId}/location`
+      );
+
+      const latlng = [
+        Number(data.latitude),
+        Number(data.longitude)
+      ];
+
+      // First location
+      if (!vehicleMarker) {
+
+        vehicleMarker = L.marker(latlng)
+          .addTo(vehicleMapInstance);
+
+        vehicleMapInstance.setView(latlng, 15);
+
+      } else {
+
+        // Smooth movement when new GPS location arrives
+        animateMarkerTo(
+          latlng,
+          POLL_INTERVAL_MS * 0.9
+        );
+
+        vehicleMapInstance.panTo(latlng);
+      }
+
+
+      // Update tracking information
+      document.querySelector("#trackLocation").textContent =
+        `${Number(data.latitude).toFixed(5)}, ${Number(data.longitude).toFixed(5)}`;
+
+      document.querySelector("#trackStatus").textContent =
+        data.status ?? "Unknown";
+
+      document.querySelector("#trackSpeed").textContent =
+        `${data.speed ?? 0} kn`;
+
+      document.querySelector("#trackUpdated").textContent =
+        data.last_updated
+          ? new Date(data.last_updated).toLocaleString()
+          : "-";
+
+
+    } catch (error) {
+
+      console.error(
+        "Failed to fetch vehicle location:",
+        error
+      );
+
+      const locationElement =
+        document.querySelector("#trackLocation");
+
+      if (locationElement) {
+        locationElement.textContent = "Unavailable";
+      }
+    }
+  }
+
+
+  // Fetch immediately
+  await poll();
+
+  // Then update every 10 seconds
+  trackingInterval = setInterval(
+    poll,
+    POLL_INTERVAL_MS
+  );
 }
 
 async function markNotificationAsRead(notificationId) {
@@ -3436,6 +3825,220 @@ async function markNotificationAsRead(notificationId) {
 
   } catch (error) {
     console.error("Failed to mark notification as read:", error);
+  }
+}
+
+async function openNotificationDetails(notificationId) {
+
+  try {
+
+    const notifications =
+      await apiFetch(`/notifications/${currentUser.id}`);
+
+    const notification = notifications.find(
+      item => Number(item.id) === Number(notificationId)
+    );
+
+    if (!notification) {
+      alert("Notification not found.");
+      return;
+    }
+
+    const booking = notification.booking;
+    const payment = notification.payment;
+
+    let relatedDetails = "";
+
+    if (booking) {
+      relatedDetails += `
+        <div>
+          <span>Booking ID</span>
+          <strong>BK-${booking.id}</strong>
+        </div>
+
+        <div>
+          <span>Vehicle</span>
+          <strong>
+            ${
+              booking.car
+                ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+                : "Vehicle unavailable"
+            }
+          </strong>
+        </div>
+
+        <div>
+          <span>Pickup</span>
+          <strong>
+            ${new Date(booking.pickup_date).toLocaleString("en-PH")}
+          </strong>
+        </div>
+
+        <div>
+          <span>Return</span>
+          <strong>
+            ${new Date(booking.return_date).toLocaleString("en-PH")}
+          </strong>
+        </div>
+
+        <div>
+          <span>Total Price</span>
+          <strong>${formatPeso(booking.total_price)}</strong>
+        </div>
+
+        <div>
+          <span>Booking Status</span>
+          <strong>${capitalize(booking.status)}</strong>
+        </div>
+      `;
+    }
+
+    if (payment) {
+      relatedDetails += `
+        <div>
+          <span>Payment Amount</span>
+          <strong>${formatPeso(payment.amount)}</strong>
+        </div>
+
+        <div>
+          <span>Payment Method</span>
+          <strong>${payment.method.toUpperCase()}</strong>
+        </div>
+
+        <div>
+          <span>Reference Number</span>
+          <strong>${payment.reference_number || "-"}</strong>
+        </div>
+
+        <div>
+          <span>Payment Status</span>
+          <strong>${capitalize(payment.status)}</strong>
+        </div>
+      `;
+    }
+
+    // Mark as read
+    if (!notification.is_read) {
+
+      await apiFetch(
+        `/notifications/${notificationId}/read`,
+        {
+          method: "PUT"
+        }
+      );
+
+      await getUnreadNotificationCount();
+      updateNotificationBadge();
+    }
+
+    // Remove old modal if one already exists
+    document.querySelector("#notificationDetailsModal")?.remove();
+
+    // Create notification details popup
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+      <div
+        id="notificationDetailsModal"
+        class="notification-modal-overlay"
+        onclick="if(event.target === this) closeNotificationDetails()"
+      >
+
+        <div class="notification-modal">
+
+          <div class="notification-modal-header">
+
+            <div>
+              <span class="notification-modal-icon">
+                ${
+                  notification.title.toLowerCase().includes("payment")
+                    ? "💳"
+                    : notification.title.toLowerCase().includes("booking")
+                    ? "📅"
+                    : "🔔"
+                }
+              </span>
+
+              <h2>${notification.title}</h2>
+            </div>
+
+            <button
+              type="button"
+              class="notification-modal-close"
+              onclick="closeNotificationDetails()"
+            >
+              ×
+            </button>
+
+          </div>
+
+          <div class="notification-modal-body">
+
+            <span class="status available">
+              Notification Details
+            </span>
+
+            <p class="notification-modal-message">
+              ${notification.message}
+            </p>
+
+            <div class="mini-list">
+
+              ${relatedDetails}
+
+              <div>
+                <span>Notification Status</span>
+                <strong>Read</strong>
+              </div>
+
+              <div>
+                <span>Date & Time</span>
+                <strong>
+                  ${new Date(
+                    notification.created_at
+                  ).toLocaleString("en-PH")}
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="notification-modal-actions">
+
+            <button
+              type="button"
+              class="primary"
+              onclick="closeNotificationDetails()"
+            >
+              Close
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+      `
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Failed to open notification:",
+      error
+    );
+
+    alert("Unable to open notification details.");
+  }
+}
+
+function closeNotificationDetails() {
+  const modal =
+    document.querySelector("#notificationDetailsModal");
+
+  if (modal) {
+    modal.remove();
   }
 }
 
@@ -3464,8 +4067,8 @@ async function notificationsPanel() {
       <div class="mini-list">
 
         ${notifications.map(notification => `
-          <div class="notification-item ${notification.is_read ? "read" : "unread"} 
-          "onclick="markNotificationAsRead(${notification.id})">
+          <div class="notification-item ${notification.is_read ? "read" : "unread"}"
+          onclick="openNotificationDetails(${notification.id})">
 
             <strong>
 
@@ -3991,7 +4594,7 @@ function aiReply(text) {
   return null;
 }
 
-function calculateTotal() {
+async function calculateTotal() {
 
   console.log("calculateTotal is running");
 
@@ -4113,8 +4716,13 @@ function calculateTotal() {
   document.querySelector("#summaryDuration").textContent =
     document.querySelector("#rentalDuration").value;
 
+  const settings = await getSystemSettings();
 
-  const reservationFee = Math.ceil(durationValue) * 500;
+  const reservationFeePerDay =
+    Number(settings.reservation_fee || 500);
+
+  const reservationFee =
+    Math.ceil(durationValue) * reservationFeePerDay;
 
   document.querySelector("#summaryReservation").textContent =
     "₱" + reservationFee.toLocaleString();
