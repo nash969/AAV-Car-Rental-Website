@@ -258,7 +258,7 @@ async function renderPanel(panel) {
   }
 
   sideNav.querySelectorAll("button")
-    .forEach(button => 
+    .forEach(button =>
       button.classList.toggle("active", button.dataset.panel === panel)
     );
 
@@ -592,7 +592,7 @@ const panels = {
     selectedCar = bookingCars.find(car => Number(car.id) === Number(selectedCar.id)) || null;
   }
 
-  let vehicleName = selectedCar 
+  let vehicleName = selectedCar
     ? capitalize(selectedCar.brand) + " " + capitalize(selectedCar.model)
     : "Select Vehicle";
 
@@ -865,7 +865,7 @@ const panels = {
 
   ${carsHTML}
   `;
-},    
+},
     reservations: async () => {
 
       const bookings = await apiFetch("/bookings");
@@ -899,7 +899,7 @@ const panels = {
         rows
       );
     },
-    
+
     payments: () => paymentPanel(),
     tracking: () => trackingPanel(),
     reports: () => reportsPanel(),
@@ -912,7 +912,7 @@ const panels = {
 
 function bookingSummary() {
 
-  let vehicleName = selectedCar 
+  let vehicleName = selectedCar
     ? capitalize(selectedCar.brand) + " " + capitalize(selectedCar.model)
     : "Select Vehicle";
 
@@ -1260,7 +1260,7 @@ async function notificationsPanel() {
       <div class="mini-list">
 
         ${notifications.map(notification => `
-          <div class="notification-item ${notification.is_read ? "read" : "unread"} 
+          <div class="notification-item ${notification.is_read ? "read" : "unread"}
           "onclick="markNotificationAsRead(${notification.id})">
 
             <strong>
@@ -1360,8 +1360,14 @@ const chatInput = document.querySelector("#chatInput");
 const chatLog = document.querySelector("#chatLog");
 
 
-chatFab.addEventListener("click", () => chatWindow.classList.toggle("open"));
-chatClose.addEventListener("click", () => chatWindow.classList.remove("open"));
+chatFab.addEventListener("click", () => {
+  chatWindow.classList.toggle("open");
+  document.querySelector("#backToTop")?.classList.toggle("chat-open", chatWindow.classList.contains("open"));
+});
+chatClose.addEventListener("click", () => {
+  chatWindow.classList.remove("open");
+  document.querySelector("#backToTop")?.classList.remove("chat-open");
+});
 chatForm.addEventListener("submit", async event => {
 
   event.preventDefault();
@@ -1793,3 +1799,105 @@ registerForm.addEventListener("submit", async function (e) {
   }
 });
 
+
+
+/* ===========================================================
+   Landing page interactions (header scroll state, mobile nav,
+   scroll-reveal animation, active-section highlighting, and
+   back-to-top button). Added when merging in the new marketing
+   landing page design. Does not touch auth/booking/portal logic.
+=========================================================== */
+(function () {
+  const siteHeader = document.querySelector("#siteHeader");
+  const menuToggle = document.querySelector("#menuToggle");
+  const navPanel = document.querySelector("#navPanel");
+  const backToTop = document.querySelector("#backToTop");
+  const landingRoot = document.querySelector("#landing");
+
+  function closeMenu() {
+    if (!menuToggle || !navPanel) return;
+    menuToggle.classList.remove("active");
+    navPanel.classList.remove("open");
+    menuToggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("menu-open");
+    siteHeader?.classList.remove("menu-active");
+  }
+
+  if (menuToggle && navPanel) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = navPanel.classList.toggle("open");
+      menuToggle.classList.toggle("active", isOpen);
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      document.body.classList.toggle("menu-open", isOpen);
+      siteHeader?.classList.toggle("menu-active", isOpen);
+    });
+  }
+
+  // Header scroll shadow/background, plus back-to-top visibility
+  function onScroll() {
+    if (siteHeader) siteHeader.classList.toggle("scrolled", window.scrollY > 12);
+    if (backToTop) backToTop.classList.toggle("visible", window.scrollY > 480);
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  backToTop?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // Any in-page anchor link (header nav, footer nav) that points to a
+  // section living inside #landing: switch to the landing view first
+  // (in case the user is on login/register/portal), then smooth-scroll.
+  document.querySelectorAll("a[href^='#']").forEach(link => {
+    const targetId = link.getAttribute("href").slice(1);
+    if (!targetId) return;
+    const target = document.getElementById(targetId);
+    if (!target || !landingRoot || !landingRoot.contains(target)) return;
+
+    link.addEventListener("click", event => {
+      event.preventDefault();
+      setView("landing");
+      closeMenu();
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  });
+
+  // Scroll-reveal animation for elements marked with class="reveal"
+  const revealTargets = document.querySelectorAll(".reveal");
+  if (revealTargets.length && "IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.14, rootMargin: "0px 0px -40px 0px" });
+    revealTargets.forEach(el => revealObserver.observe(el));
+  } else {
+    revealTargets.forEach(el => el.classList.add("visible"));
+  }
+
+  // Highlight the current section's nav link while scrolling the landing page
+  const navLinks = document.querySelectorAll(".nav-panel a[href^='#']");
+  const sections = Array.from(navLinks)
+    .map(link => document.getElementById(link.getAttribute("href").slice(1)))
+    .filter(Boolean);
+
+  if (sections.length && "IntersectionObserver" in window) {
+    const sectionObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const id = entry.target.id;
+        const link = document.querySelector(`.nav-panel a[href="#${id}"]`);
+        if (!link) return;
+        if (entry.isIntersecting) {
+          navLinks.forEach(l => l.classList.remove("active"));
+          link.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    sections.forEach(section => sectionObserver.observe(section));
+  }
+})();
