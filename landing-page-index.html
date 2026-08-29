@@ -3,39 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AAV Car Rental Services</title>
+    <title>AAV Car Rental Services | Quality Wheels, Low Bills!</title>
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="landing-page-style.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-
-    <script
-      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-    </script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   </head>
   <body>
     <div id="app">
       <header class="site-header" id="siteHeader">
         <nav class="navbar" aria-label="Main navigation">
-
           <a class="brand" href="#home" data-route="landing">
             <span class="brand-mark">AAV</span>
-
             <span class="brand-text">
               <strong>AAV Car Rental Services</strong>
               <small>Quality Wheels, Low Bills!</small>
             </span>
           </a>
 
-          <button
-            class="menu-toggle"
-            id="menuToggle"
-            type="button"
-            aria-label="Open navigation"
-            aria-expanded="false"
-          >
+          <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-expanded="false">
             <span></span>
             <span></span>
             <span></span>
@@ -50,20 +35,10 @@
             <a href="#process">How It Works</a>
             <a href="#requirements">Requirements</a>
             <a href="#contact">Contact</a>
-
-            <button class="btn btn-ghost btn-sm" type="button" data-route="login">
-              Log In
-            </button>
-
-            <button class="btn btn-secondary btn-sm" type="button" data-route="register">
-              Sign Up
-            </button>
-
-            <button class="btn btn-primary btn-sm" type="button" data-route="register">
-              Book Now
-            </button>
+            <button class="btn btn-ghost btn-sm" type="button" data-route="login">Log In</button>
+            <button class="btn btn-secondary btn-sm" type="button" data-route="register">Sign Up</button>
+            <button class="btn btn-primary btn-sm" type="button" data-route="register">Book Now</button>
           </div>
-
         </nav>
       </header>
 
@@ -71,35 +46,18 @@
       <main id="landing" class="view active">
         <section class="hero section-dark" id="home">
           <div class="container hero-grid">
-
-            <div class="hero-copy">
+            <div class="hero-copy reveal">
               <p class="eyebrow">AAV Car Rental Services</p>
-
-              <h1>
-                QUALITY WHEELS. <span>LOW BILLS.</span>
-              </h1>
-
+              <h1>QUALITY WHEELS. <span>LOW BILLS.</span></h1>
               <h2>Drive your journey with confidence.</h2>
-
               <p>
                 Premium car rental booking, reservation payments, customer document
                 verification, and vehicle tracking in one elegant web system.
               </p>
-
               <div class="hero-actions">
-                <button
-                  class="btn btn-primary"
-                  data-route="register"
-                  type="button"
-                >
-                  Book Your Ride
-                </button>
-
-                <a class="btn btn-secondary" href="#cars">
-                  Explore Our Cars
-                </a>
+                <button class="btn btn-primary" data-route="register" type="button">Book Your Ride</button>
+                <a class="btn btn-secondary" href="#cars">Explore Our Cars</a>
               </div>
-
               <div class="hero-points" aria-label="AAV strengths">
                 <span>Taguig City</span>
                 <span>GCash and bank transfer</span>
@@ -107,64 +65,42 @@
               </div>
             </div>
 
-            <div class="hero-visual">
-              <img
-                src="./assets/toyota-suv.jpg"
-                alt="Silver Toyota SUV rental vehicle"
-              />
-
+            <div class="hero-visual reveal">
+              <img src="./assets/toyota-suv.jpg" alt="Silver Toyota SUV rental vehicle" />
               <div class="floating-card">
                 <strong>Affordable • Reliable • Comfortable</strong>
                 <span>Verified documents. Smooth bookings.</span>
               </div>
             </div>
-
           </div>
         </section>
 
         <section class="service-highlights">
           <div class="container highlight-grid">
-
             <article class="highlight-card reveal">
               <span>01</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 7h16v10H4z"/>
-                <path d="M7 17v2M17 17v2M7 11h10"/>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4z"/><path d="M7 17v2M17 17v2M7 11h10"/></svg>
               <h3>Affordable Rates</h3>
               <p>Competitive rental rates designed for different travel needs.</p>
             </article>
-
             <article class="highlight-card reveal">
               <span>02</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m12 3 7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/>
-                <path d="m9 12 2 2 4-5"/>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/><path d="m9 12 2 2 4-5"/></svg>
               <h3>Reliable Vehicles</h3>
               <p>Well-maintained vehicles for a dependable journey.</p>
             </article>
-
             <article class="highlight-card reveal">
               <span>03</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M7 3v3M17 3v3M4 8h16M5 5h14v15H5z"/>
-                <path d="m9 14 2 2 4-4"/>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 8h16M5 5h14v15H5z"/><path d="m9 14 2 2 4-4"/></svg>
               <h3>Fast & Easy Booking</h3>
               <p>A simple and convenient rental process.</p>
             </article>
-
             <article class="highlight-card reveal">
               <span>04</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 16h14l-2-6H7z"/>
-                <path d="M7 19h.1M17 19h.1M4 16v3M20 16v3"/>
-              </svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16h14l-2-6H7z"/><path d="M7 19h.1M17 19h.1M4 16v3M20 16v3"/></svg>
               <h3>Safe & Comfortable Travel</h3>
               <p>Travel with confidence and comfort.</p>
             </article>
-
           </div>
         </section>
 
@@ -192,9 +128,8 @@
             </div>
           </div>
         </section>
-      
 
-      <section class="section section-soft" id="cars">
+        <section class="section section-soft" id="cars">
           <div class="container">
             <div class="section-heading reveal">
               <p class="eyebrow">Featured Fleet</p>
@@ -466,6 +401,7 @@
         </section>
       </main>
 
+
       <main id="login" class="view auth-view">
         <section class="auth-card">
           <div class="auth-art">
@@ -481,21 +417,12 @@
 
 
           <form class="auth-form" id="loginForm">
-            <button type="button" class="back-home-link" data-route="landing">
-              ← Back to Home
-            </button>
             <h2>Login</h2>
             <label>Email<input id="loginEmail" type="email" value="customer@aavrental.com" required /></label>
             <label>Password<input id="loginPassword" type="password" value="Customer@123" required /></label>
             <div class="form-row">
               <label class="check"><input type="checkbox" checked /> Remember Me</label>
-              <button
-                class="link-button"
-                data-route="forgot-password"
-                type="button"
-              >
-                Forgot Password?
-              </button>
+              <a href="#">Forgot Password?</a>
             </div>
             <button class="primary full" type="submit">Login</button>
             <p>New customer? <button class="link-button" data-route="register" type="button">Create an account</button></p>
@@ -503,143 +430,9 @@
         </section>
       </main>
 
-      <main id="forgot-password" class="view auth-view">
-        <section class="auth-card">
-
-          <div class="auth-art">
-            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
-            <h1>Forgot Password?</h1>
-            <p>
-              Enter the email address registered to your AAV account.
-              We will send you a verification code.
-            </p>
-          </div>
-
-          <form class="auth-form" id="forgotPasswordForm">
-            <h2>Reset Password</h2>
-
-            <label>
-              Email
-              <input
-                id="forgotEmail"
-                type="email"
-                placeholder="your@email.com"
-                required
-              />
-            </label>
-
-            <button class="primary full" type="submit">
-              Send OTP
-            </button>
-
-            <p>
-              Remember your password?
-              <button
-                class="link-button"
-                data-route="login"
-                type="button"
-              >
-                Back to Login
-              </button>
-            </p>
-          </form>
-
-        </section>
-      </main>
-
-      <main id="verify-otp" class="view auth-view">
-        <section class="auth-card">
-
-          <div class="auth-art">
-            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
-            <h1>Verify OTP</h1>
-            <p>
-              Enter the 6-digit verification code sent to your registered email.
-            </p>
-          </div>
-
-          <form class="auth-form" id="verifyOtpForm">
-            <h2>Enter Verification Code</h2>
-
-            <label>
-              OTP Code
-              <input
-                id="otpCode"
-                type="text"
-                inputmode="numeric"
-                maxlength="6"
-                placeholder="Enter 6-digit OTP"
-                required
-              />
-            </label>
-
-            <button class="primary full" type="submit">
-              Verify OTP
-            </button>
-
-            <p>
-              Didn't receive the code?
-              <button
-                class="link-button"
-                data-route="forgot-password"
-                type="button"
-              >
-                Send Again
-              </button>
-            </p>
-          </form>
-
-        </section>
-      </main>
-
-      <main id="reset-password" class="view auth-view">
-        <section class="auth-card">
-
-          <div class="auth-art">
-            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
-            <h1>Create New Password</h1>
-            <p>
-              Enter your new password below.
-            </p>
-          </div>
-
-          <form class="auth-form" id="resetPasswordForm">
-            <h2>Reset Password</h2>
-
-            <label>
-              New Password
-              <input
-                id="newPassword"
-                type="password"
-                minlength="8"
-                required
-              />
-            </label>
-
-            <label>
-              Confirm Password
-              <input
-                id="confirmNewPassword"
-                type="password"
-                minlength="8"
-                required
-              />
-            </label>
-
-            <button class="primary full" type="submit">
-              Update Password
-            </button>
-          </form>
-
-        </section>
-      </main>
-
 
       <main id="register" class="view auth-view">
         <section class="register-card">
-          <button type="button" class="back-home-link" data-route="landing">
-            ← Back to Home
-          </button>
           <div class="section-head compact">
             <p class="kicker">Customer registration</p>
             <h1>Create your AAV rental account</h1>
@@ -648,132 +441,18 @@
 
 
           <form class="register-form" id="registerForm">
-
-            <label>
-              First Name
-              <input
-                id="firstName"
-                name="first_name"
-                type="text"
-                placeholder="Juan"
-                required
-              />
-            </label>
-
-            <label>
-              Last Name
-              <input
-                id="lastName"
-                name="last_name"
-                type="text"
-                placeholder="Dela Cruz"
-                required
-              />
-            </label>
-
-            <label>
-              Email
-              <input
-                id="registerEmail"
-                name="email"
-                type="email"
-                placeholder="customer@email.com"
-                required
-              />
-            </label>
-
-            <label>
-              Mobile Number
-              <input
-                id="registerPhone"
-                name="phone"
-                type="tel"
-                placeholder="+639274589432"
-                required
-              />
-            </label>
-
-            <label class="wide">
-              Address
-              <input
-                id="registerAddress"
-                name="address"
-                type="text"
-                placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City"
-                required
-              />
-            </label>
-
-            <label>
-              Driver's License Number
-              <input
-                id="driverLicenseNumber"
-                name="driver_license_number"
-                type="text"
-                placeholder="N01-23-456789"
-                required
-              />
-            </label>
-
-            <label>
-              Password
-              <input
-                id="registerPassword"
-                name="password"
-                type="password"
-                minlength="8"
-                required
-              />
-            </label>
-
-            <label>
-              Confirm Password
-              <input
-                id="registerPasswordConfirmation"
-                name="password_confirmation"
-                type="password"
-                minlength="8"
-                required
-              />
-            </label>
-
-            <label>
-              Upload Government ID
-              <input
-                id="governmentId"
-                name="government_id"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                required
-              />
-            </label>
-
-            <label>
-              Upload Driver's License
-              <input
-                id="driverLicense"
-                name="driver_license"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                required
-              />
-            </label>
-
-            <label>
-              Upload Selfie Holding ID
-              <input
-                id="selfieId"
-                name="selfie_id"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                required
-              />
-            </label>
-
-            <button class="primary wide" type="submit">
-              Create Account
-            </button>
-
+            <label>First Name<input id="firstName" type="text" placeholder="Juan" /></label>
+            <label>Last Name<input id="lastName" type="text" placeholder="Dela Cruz" /></label>
+            <label>Email<input id="registerEmail" type="email" placeholder="customer@email.com" /></label>
+            <label>Mobile Number<input id="registerPhone" type="tel" placeholder="+639274589432" /></label>
+            <label class="wide">Address<input type="text" placeholder="46 Pag-asa St., Brgy. Katuparan, Taguig City" /></label>
+            <label>Driver's License Number<input type="text" placeholder="N01-23-456789" /></label>
+            <label>Password<input id="registerPassword" type="password" /></label>
+            <label>Confirm Password<input type="password" /></label>
+            <label>Upload Government ID<input type="file" /></label>
+            <label>Upload Driver's License<input type="file" /></label>
+            <label>Upload Selfie Holding ID<input type="file" /></label>
+            <button class="primary wide" type="submit">Create Account</button>
           </form>
         </section>
       </main>
@@ -867,4 +546,3 @@
     <script src="script.js"></script>
   </body>
 </html>
-
