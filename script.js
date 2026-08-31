@@ -4,7 +4,7 @@ const workspaceContent = document.querySelector("#workspaceContent");
 const workspaceTitle = document.querySelector("#workspaceTitle");
 const workspaceKicker = document.querySelector("#workspaceKicker");
 const roleLabel = document.querySelector("#roleLabel");
-const API_URL = "http://127.0.0.1:8000/api";
+const API_URL = "https://aav-car-rental-backend.onrender.com/api";
 
 let currentUser = JSON.parse(localStorage.getItem("aavUser") || "null");
 let authToken = localStorage.getItem("aavToken");
@@ -18,7 +18,17 @@ async function apiFetch(path, options = {}) {
   }
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || "Something went wrong. Please try again.");
+  if (!response.ok) {
+    const error = new Error(
+      data.message || "Something went wrong. Please try again."
+    );
+
+    error.status = response.status;
+    error.data = data;
+
+    throw error;
+  }
+
   return data;
 }
 
@@ -197,6 +207,114 @@ async function getMyBookings(forceRefresh = false) {
   return bookings;
 }
 
+async function editCustomerBooking(bookingId) {
+  try {
+    const bookings = await getMyBookings();
+
+    const booking = bookings.find(
+      item => Number(item.id) === Number(bookingId)
+    );
+
+    if (!booking) {
+      console.error("Booking not found.");
+      return;
+    }
+
+    editingBookingId = booking.id;
+    selectedCar = booking.car || null;
+
+    await renderPanel("bookings");
+
+    const pickup = new Date(booking.pickup_date);
+    const returned = new Date(booking.return_date);
+
+    const pickupDate =
+      pickup.toISOString().slice(0, 10);
+
+    const pickupTime =
+      pickup.toTimeString().slice(0, 5);
+
+    const returnDate =
+      returned.toISOString().slice(0, 10);
+
+    const returnTime =
+      returned.toTimeString().slice(0, 5);
+
+    document.querySelector("#bookingVehicle").value =
+      booking.car_id || "";
+
+    document.querySelector("#pickupDate").value =
+      pickupDate;
+
+    document.querySelector("#pickupTime").value =
+      pickupTime;
+
+    document.querySelector("#returnDate").value =
+      returnDate;
+
+    document.querySelector("#returnTime").value =
+      returnTime;
+
+    if (booking.location) {
+      document.querySelector("#tripDestination").value =
+        booking.location;
+    }
+
+    calculateTotal();
+
+  } catch (error) {
+    console.error("Edit booking error:", error);
+
+    alert(
+      error.message ||
+      "Unable to load this booking for editing."
+    );
+  }
+}
+
+async function cancelCustomerBooking(bookingId) {
+  const confirmed = confirm(
+    `Are you sure you want to cancel Booking BK-${bookingId}? This action cannot be undone.`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const response = await apiFetch(
+      `/bookings/${bookingId}/cancel`,
+      {
+        method: "PATCH"
+      }
+    );
+
+    alert(
+      response.message ||
+      "Booking cancelled successfully."
+    );
+
+    // Clear cached booking/payment data
+    myBookingsCache = null;
+    myBookingsCacheTime = 0;
+
+    bookingsCache = null;
+    bookingsCacheTime = 0;
+
+    paymentsCache = null;
+    paymentsCacheTime = 0;
+
+    // Reload My Bookings
+    await renderPanel("my-bookings");
+
+  } catch (error) {
+    console.error("Cancel booking error:", error);
+
+    alert(
+      error.message ||
+      "Unable to cancel this booking."
+    );
+  }
+}
+
 let settingsCache = null;
 let settingsCacheTime = 0;
 
@@ -222,6 +340,33 @@ async function getSystemSettings(forceRefresh = false) {
 
 function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function bookingStatusBadge(status) {
+  const normalizedStatus =
+    (status || "pending").toLowerCase();
+
+  const classes = {
+    pending: "reserved",
+    confirmed: "available",
+    ongoing: "reserved",
+    completed: "available",
+    cancelled: "trip"
+  };
+
+  const labels = {
+    pending: "Pending",
+    confirmed: "Confirmed",
+    ongoing: "Ongoing",
+    completed: "Completed",
+    cancelled: "Cancelled"
+  };
+
+  return `
+    <span class="status ${classes[normalizedStatus] || "reserved"}">
+      ${labels[normalizedStatus] || capitalize(normalizedStatus)}
+    </span>
+  `;
 }
 
 function filterEmployeeCustomers(value) {
@@ -462,6 +607,7 @@ const roleMenus = {
     ["rentals", "Rentals", "i-car"],
     ["customers", "Customers", "i-user"],
     ["vehicles", "Vehicles", "i-car"],
+    ["maintenance", "Maintenance", "i-file"],
     ["payments", "Payments", "i-card"],
     ["chat", "AI Chat Monitor", "i-chat"],
     ["reports", "Reports", "i-chart"],
@@ -469,22 +615,114 @@ const roleMenus = {
     ["logout", "Logout", "i-log-out"]
   ],
   admin: [
-    ["dashboard", "Dashboard", "i-home"], ["employees", "Employees", "i-user"],
-    ["customers", "Customers", "i-user"], ["vehicle-management", "Vehicle Management", "i-car"],
-    ["reservations", "Reservations", "i-file"], ["payments", "Payments", "i-card"],
-    ["tracking", "Vehicle Tracking", "i-map"], ["reports", "Reports", "i-chart"],
-    ["logs", "AI Assistant Logs", "i-chat"], ["settings", "Settings", "i-file"],
-    ["profile", "Profile", "i-user"], ["logout", "Logout", "i-log-out"]
+    ["dashboard", "Dashboard", "i-home"], 
+    ["employees", "Employees", "i-user"],
+    ["customers", "Customers", "i-user"], 
+    ["vehicle-management", "Vehicle Management", "i-car"],
+    ["maintenance", "Maintenance", "i-file"],
+    ["reservations", "Reservations", "i-file"], 
+    ["payments", "Payments", "i-card"],
+    ["tracking", "Vehicle Tracking", "i-map"], 
+    ["reports", "Reports", "i-chart"],
+    ["logs", "AI Assistant Logs", "i-chat"], 
+    ["settings", "Settings", "i-file"],
+    ["profile", "Profile", "i-user"], 
+    ["logout", "Logout", "i-log-out"]
   ]
 };
 
 
 let currentRole = currentUser?.role || "customer";
 let selectedCar = null;
+let editingBookingId = null;
 let editingCarId = null;
 let bookingCars = [];
 let unreadNotifications = 0;
 let resetEmail = null;
+let otpResendTimer = null;
+let otpResendSeconds = 60;
+
+function startOtpResendCountdown(seconds = 60) {
+  const resendBtn = document.querySelector("#resendOtpBtn");
+
+  if (!resendBtn) return;
+
+  if (otpResendTimer) {
+    clearInterval(otpResendTimer);
+  }
+
+  otpResendSeconds = seconds;
+
+  resendBtn.disabled = true;
+  resendBtn.textContent = `Resend in ${otpResendSeconds}s`;
+
+  otpResendTimer = setInterval(() => {
+    otpResendSeconds--;
+
+    if (otpResendSeconds <= 0) {
+      clearInterval(otpResendTimer);
+      otpResendTimer = null;
+
+      resendBtn.disabled = false;
+      resendBtn.textContent = "Send Again";
+      return;
+    }
+
+    resendBtn.textContent = `Resend in ${otpResendSeconds}s`;
+  }, 1000);
+}
+
+const resendOtpBtn = document.querySelector("#resendOtpBtn");
+
+resendOtpBtn?.addEventListener("click", async () => {
+  if (!resetEmail || resendOtpBtn.disabled) return;
+
+  resendOtpBtn.disabled = true;
+  resendOtpBtn.textContent = "Sending...";
+
+  try {
+    await apiFetch("/forgot-password/send-otp", {
+      method: "POST",
+      body: JSON.stringify({
+        email: resetEmail
+      })
+    });
+
+    // Reset OTP input
+    const otpInput = document.querySelector("#otpCode");
+
+    if (otpInput) {
+      otpInput.value = "";
+    }
+
+    // Unlock Verify OTP button
+    const verifyButton = document.querySelector(
+      "#verifyOtpForm button[type='submit']"
+    );
+
+    if (verifyButton) {
+      verifyButton.disabled = false;
+      verifyButton.textContent = "Verify OTP";
+    }
+
+    // Remove previous OTP error/lock message
+    const otpMessage = document.querySelector("#otpMessage");
+
+    if (otpMessage) {
+      otpMessage.textContent = "";
+      otpMessage.style.display = "none";
+    }
+
+    // Restart resend cooldown
+    startOtpResendCountdown(60);
+
+  } catch (error) {
+    console.error("Resend OTP error:", error);
+
+    resendOtpBtn.disabled = false;
+    resendOtpBtn.textContent = "Send Again";
+  }
+});
 
 async function openBooking(carId) {
 
@@ -546,6 +784,10 @@ document.addEventListener("click", event => {
   }
   if (panel) {
 
+    if (panel === "bookings" && currentRole === "customer") {
+      editingBookingId = null;
+    }
+
   // Reset Edit Vehicle mode when the admin manually opens
   // Vehicle Management from the sidebar
     if (panel === "vehicle-management") {
@@ -579,6 +821,24 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
         const data = await response.json();
 
         if (response.ok) {
+
+        // Restrict login based on selected portal
+          if (
+            selectedLoginType === "customer" &&
+            data.user.role !== "customer"
+          ) {
+            alert("This account is for Staff Login. Please use the Staff Login option.");
+            return;
+          }
+
+          if (
+            selectedLoginType === "staff" &&
+            !["admin", "employee"].includes(data.user.role)
+          ) {
+            alert("This account is for Customer Login. Please use the Customer Login option.");
+            return;
+          }
+
             currentUser = data.user;
             authToken = data.token;
             localStorage.setItem("aavUser", JSON.stringify(currentUser));
@@ -660,30 +920,88 @@ document.querySelector("#forgotPasswordForm").addEventListener("submit", async f
 
     resetEmail = email;
 
-    alert(
-      "OTP sent successfully! Please check your email."
-    );
-
     setView("verify-otp");
+
+    setTimeout(() => {
+      startOtpResendCountdown(60);
+    }, 0);
 
   } catch (error) {
 
     console.error("Forgot password error:", error);
 
-    alert(error.message);
+    if (error.status === 429 && error.data?.retry_after) {
+      resetEmail = email;
+
+      setView("verify-otp");
+
+      setTimeout(() => {
+        startOtpResendCountdown(error.data.retry_after);
+      }, 0);
+    }
+
   }
 });
 
 document.querySelector("#verifyOtpForm").addEventListener("submit", async function (event) {
   event.preventDefault();
 
-  const otp = document.querySelector("#otpCode").value.trim();
+  const form = event.currentTarget;
+  const otpInput = document.querySelector("#otpCode");
+  const otp = otpInput.value.trim();
+  const verifyButton = form.querySelector('button[type="submit"]');
+
+  // Create inline message area once
+  let messageBox = document.querySelector("#otpMessage");
+
+  if (!messageBox) {
+    messageBox = document.createElement("div");
+    messageBox.id = "otpMessage";
+
+    messageBox.style.marginTop = "12px";
+    messageBox.style.padding = "10px 12px";
+    messageBox.style.borderRadius = "8px";
+    messageBox.style.fontSize = "14px";
+    messageBox.style.display = "none";
+
+    verifyButton.insertAdjacentElement("afterend", messageBox);
+  }
+
+  function showOtpMessage(message, type = "error") {
+    messageBox.textContent = message;
+    messageBox.style.display = "block";
+
+    if (type === "success") {
+      messageBox.style.background = "#ecfdf3";
+      messageBox.style.color = "#166534";
+      messageBox.style.border = "1px solid #bbf7d0";
+    } else {
+      messageBox.style.background = "#fef2f2";
+      messageBox.style.color = "#991b1b";
+      messageBox.style.border = "1px solid #fecaca";
+    }
+  }
 
   if (!resetEmail) {
-    alert("Please request a new OTP first.");
-    setView("forgot-password");
+    showOtpMessage(
+      "Your password reset session has expired. Please request a new OTP."
+    );
+
+    setTimeout(() => {
+      setView("forgot-password");
+    }, 1500);
+
     return;
   }
+
+  if (!/^\d{6}$/.test(otp)) {
+    showOtpMessage("Please enter a valid 6-digit OTP.");
+    otpInput.focus();
+    return;
+  }
+
+  verifyButton.disabled = true;
+  verifyButton.textContent = "Verifying...";
 
   try {
     const response = await apiFetch("/forgot-password/verify-otp", {
@@ -696,13 +1014,32 @@ document.querySelector("#verifyOtpForm").addEventListener("submit", async functi
 
     console.log("Verify OTP Response:", response);
 
-    alert("OTP verified successfully!");
+    showOtpMessage(
+      response.message || "OTP verified successfully.",
+      "success"
+    );
 
-    setView("reset-password");
+    verifyButton.textContent = "Verified";
+
+    setTimeout(() => {
+      setView("reset-password");
+    }, 800);
 
   } catch (error) {
     console.error("Verify OTP error:", error);
-    alert(error.message);
+
+    showOtpMessage(
+      error.message || "Unable to verify OTP. Please try again."
+    );
+
+    // If maximum attempts reached, lock verification
+    if (error.status === 429) {
+      verifyButton.disabled = true;
+      verifyButton.textContent = "Request New OTP";
+    } else {
+      verifyButton.disabled = false;
+      verifyButton.textContent = "Verify OTP";
+    }
   }
 });
 
@@ -818,6 +1155,12 @@ async function renderPanel(panel) {
   if (panel === "payments" && currentRole === "customer") {
     setTimeout(() => {
       updatePaymentBreakdown();
+    }, 0);
+  }
+
+  if (panel === "bookings" && currentRole === "customer") {
+    setTimeout(() => {
+      loadBookingRentalPolicy();
     }, 0);
   }
 }
@@ -1415,7 +1758,9 @@ async function charts(cars = null, payments = null) {
 
   approvedPayments.forEach(payment => {
 
-    const date = new Date(payment.created_at);
+    const date = new Date(
+      payment.paid_at || payment.created_at
+    );
 
     const monthKey = date.toLocaleDateString("en-PH", {
       month: "short",
@@ -1530,7 +1875,7 @@ async function charts(cars = null, payments = null) {
 
       <section class="chart-card">
 
-        <h3>Vehicle Availability</h3>
+        <h3>Current Vehicle Status</h3>
 
         <div class="mini-list">
 
@@ -1623,6 +1968,950 @@ function adminCharts(payments, cars, bookings) {
   `;
 }
 
+function maintenanceStatusBadge(status) {
+  const normalizedStatus = status || "setup_required";
+
+  const labels = {
+    setup_required: "Setup Required",
+    inspection_required: "Inspection Required",
+    schedule_review_required: "Schedule Review Required",
+    under_maintenance: "Under Maintenance",
+    good: "Good",
+    due_soon: "Due Soon",
+    due: "Due",
+    overdue: "Overdue"
+  };
+
+  return `
+    <span class="maintenance-status ${normalizedStatus}">
+      ${labels[normalizedStatus] || "Unknown"}
+    </span>
+  `;
+}
+
+async function maintenancePanel() {
+  try {
+    const vehicles = await apiFetch("/maintenance/vehicles");
+
+    return `
+      <section class="panel">
+        <h3>Vehicle Maintenance</h3>
+
+        <p class="form-help">
+          Monitor vehicle mileage and scheduled maintenance.
+        </p>
+
+        <div class="table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Vehicle</th>
+                <th>Current Mileage</th>
+                <th>Next Service</th>
+                <th>Remaining KM</th>
+                <th>Due Date</th>
+                <th>Availability</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${vehicles.map(vehicle => {
+                const maintenance = vehicle.maintenance || {};
+                const initialized = vehicle.maintenance_initialized;
+
+                return `
+                  <tr>
+                    <td>
+                      ${capitalize(vehicle.brand)}
+                      ${capitalize(vehicle.model)}
+                    </td>
+
+                    <td>
+                      ${initialized
+                        ? `${Number(vehicle.current_mileage).toLocaleString("en-PH")} km`
+                        : "Not set"}
+                    </td>
+
+                    <td>
+                      ${maintenance.next_service || "—"}
+                    </td>
+
+                    <td>
+                      ${maintenance.remaining_km !== null &&
+                        maintenance.remaining_km !== undefined
+                        ? `${Number(maintenance.remaining_km).toLocaleString("en-PH")} km`
+                        : "—"}
+                    </td>
+
+                    <td>
+                      ${
+                        maintenance.next_inspection_date
+                          ? new Date(
+                              `${maintenance.next_inspection_date}T00:00:00`
+                            ).toLocaleDateString("en-PH", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric"
+                            })
+                          : initialized
+                            ? "Inspection date unknown"
+                            : "—"
+                      }
+                    </td>
+
+                    <td>
+                      ${
+                        vehicle.available
+                          ? `<span class="maintenance-status good">Available</span>`
+                          : `<span class="maintenance-status under_maintenance">Unavailable</span>`
+                      }
+                    </td>
+
+                    <td>
+                      ${maintenanceStatusBadge(
+                        !initialized
+                          ? "setup_required"
+                          : vehicle.has_ongoing_maintenance
+                            ? "under_maintenance"
+                            : maintenance.status
+                      )}
+
+                      ${
+                        vehicle.has_ongoing_maintenance &&
+                        vehicle.ongoing_maintenance_service
+                          ? `
+                            <div class="maintenance-service-label">
+                              ${vehicle.ongoing_maintenance_service}
+                            </div>
+                          `
+                          : ""
+                      }
+                    </td>
+
+                    <td>
+                      ${
+                        initialized
+                          ? `
+                           ${
+                              !vehicle.has_ongoing_maintenance
+                                ? `
+                                  <button
+                                    type="button"
+                                    class="secondary"
+                                    onclick="openMileageUpdate(
+                                      ${vehicle.id},
+                                      ${Number(vehicle.current_mileage)}
+                                    )">
+                                    Update Mileage
+                                  </button>
+                                `
+                                : ""
+                            }
+
+                            ${
+                              !vehicle.has_ongoing_maintenance
+                                ? `
+                                  <button
+                                    type="button"
+                                    class="primary"
+                                    onclick="openStartMaintenance(${vehicle.id})">
+                                    Start Maintenance
+                                  </button>
+                                `
+                                : `
+                                  <button
+                                    type="button"
+                                    class="primary"
+                                    onclick="openCompleteMaintenance(
+                                      ${vehicle.ongoing_maintenance_id}
+                                    )">
+                                    Complete Maintenance
+                                  </button>
+                                `
+                            }
+
+                            <button
+                              type="button"
+                              class="secondary"
+                              onclick="openMaintenanceHistory(${vehicle.id})">
+                              View History
+                            </button>
+                          `
+                          : `
+                            ${
+                              currentRole === "admin"
+                                ? `
+                                  <button
+                                    type="button"
+                                    class="primary"
+                                    onclick="openMaintenanceSetup(${vehicle.id})">
+                                    Setup Maintenance
+                                  </button>
+                                `
+                                : `
+                                  <span class="maintenance-service-label">
+                                    Admin setup required
+                                  </span>
+                                `
+                            }
+                          `
+                      }
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+
+  } catch (error) {
+    console.error("Maintenance panel error:", error);
+
+    return `
+      <section class="panel">
+        <h3>Vehicle Maintenance</h3>
+        <p class="form-help">
+          Unable to load maintenance information.
+        </p>
+      </section>
+    `;
+  }
+}
+
+function openMaintenanceSetup(vehicleId) {
+  const existingModal = document.querySelector("#maintenanceSetupModal");
+  existingModal?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "maintenanceSetupModal";
+  modal.className = "modal-backdrop";
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3>Setup Vehicle Maintenance</h3>
+          <p class="form-help">
+            Enter the vehicle's actual odometer reading to begin maintenance tracking.
+          </p>
+        </div>
+      </div>
+
+      <form
+        id="maintenanceSetupForm"
+        onsubmit="submitMaintenanceSetup(event, ${vehicleId})">
+
+        <div class="form-grid">
+
+          <label>
+            Current Odometer (km)
+            <input
+              type="number"
+              name="current_mileage"
+              min="0"
+              step="1"
+              required
+              placeholder="Enter actual mileage">
+          </label>
+
+          <label>
+            Last Inspection Date
+            <input
+              type="date"
+              name="last_inspection_date">
+            <small class="form-help">
+              Optional if the last inspection date is unknown.
+            </small>
+          </label>
+
+        </div>
+
+        <div
+          id="maintenanceSetupMessage"
+          class="form-help"
+          style="display:none; margin-top:16px;">
+        </div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="secondary"
+            onclick="closeMaintenanceSetup()">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary">
+            Initialize Maintenance
+          </button>
+        </div>
+
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+function closeMaintenanceSetup() {
+  document.querySelector("#maintenanceSetupModal")?.remove();
+}
+
+async function submitMaintenanceSetup(event, vehicleId) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const messageBox = document.querySelector("#maintenanceSetupMessage");
+
+  const currentMileage = form.current_mileage.value.trim();
+  const lastInspectionDate = form.last_inspection_date.value;
+
+  if (messageBox) {
+    messageBox.style.display = "none";
+    messageBox.textContent = "";
+  }
+
+  if (currentMileage === "") {
+    if (messageBox) {
+      messageBox.textContent = "Please enter the current odometer reading.";
+      messageBox.style.display = "block";
+    }
+
+    form.current_mileage.focus();
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Initializing...";
+
+  try {
+    await apiFetch(`/maintenance/vehicles/${vehicleId}/initialize`, {
+      method: "POST",
+      body: JSON.stringify({
+        current_mileage: Number(currentMileage),
+        last_inspection_date: lastInspectionDate || null
+      })
+    });
+
+    closeMaintenanceSetup();
+
+    await renderPanel("maintenance");
+
+  } catch (error) {
+    console.error("Maintenance setup error:", error);
+
+    if (messageBox) {
+      messageBox.textContent =
+        error.message || "Unable to initialize maintenance tracking.";
+
+      messageBox.style.display = "block";
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = "Initialize Maintenance";
+  }
+}
+
+function openMileageUpdate(vehicleId, currentMileage) {
+  const existingModal = document.querySelector("#mileageUpdateModal");
+  existingModal?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "mileageUpdateModal";
+  modal.className = "modal-backdrop";
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Update Vehicle Mileage</h3>
+        <p class="form-help">
+          Current recorded mileage:
+          <strong>${Number(currentMileage).toLocaleString("en-PH")} km</strong>
+        </p>
+      </div>
+
+      <form
+        id="mileageUpdateForm"
+        onsubmit="submitMileageUpdate(event, ${vehicleId}, ${currentMileage})">
+
+        <div class="form-grid">
+          <label>
+            New Odometer Reading (km)
+            <input
+              type="number"
+              name="current_mileage"
+              min="${currentMileage}"
+              step="1"
+              required
+              placeholder="Enter new mileage">
+          </label>
+        </div>
+
+        <div
+          id="mileageUpdateMessage"
+          class="form-help"
+          style="display:none; margin-top:16px;">
+        </div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="secondary"
+            onclick="closeMileageUpdate()">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary">
+            Update Mileage
+          </button>
+        </div>
+
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+function closeMileageUpdate() {
+  document.querySelector("#mileageUpdateModal")?.remove();
+}
+
+async function submitMileageUpdate(event, vehicleId, previousMileage) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const messageBox = document.querySelector("#mileageUpdateMessage");
+
+  const newMileage = Number(form.current_mileage.value);
+
+  if (messageBox) {
+    messageBox.style.display = "none";
+    messageBox.textContent = "";
+  }
+
+  // Frontend protection against decreasing odometer
+  if (newMileage < Number(previousMileage)) {
+    if (messageBox) {
+      messageBox.textContent =
+        `Mileage cannot be lower than the current ${Number(previousMileage).toLocaleString("en-PH")} km.`;
+      messageBox.style.display = "block";
+    }
+
+    form.current_mileage.focus();
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Updating...";
+
+  try {
+    await apiFetch(`/maintenance/vehicles/${vehicleId}/mileage`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        current_mileage: newMileage
+      })
+    });
+
+    closeMileageUpdate();
+
+    await renderPanel("maintenance");
+
+  } catch (error) {
+    console.error("Mileage update error:", error);
+
+    if (messageBox) {
+      messageBox.textContent =
+        error.message || "Unable to update vehicle mileage.";
+
+      messageBox.style.display = "block";
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = "Update Mileage";
+  }
+}
+
+async function openStartMaintenance(vehicleId) {
+  const existingModal = document.querySelector("#startMaintenanceModal");
+  existingModal?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "startMaintenanceModal";
+  modal.className = "modal-backdrop";
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Start Vehicle Maintenance</h3>
+        <p class="form-help">
+          Select the maintenance service to be performed.
+        </p>
+      </div>
+
+      <form
+        id="startMaintenanceForm"
+        onsubmit="submitStartMaintenance(event, ${vehicleId})">
+
+        <div class="form-grid">
+
+          <label>
+            Maintenance Schedule
+            <select
+              name="maintenance_schedule_id"
+              id="maintenanceScheduleSelect">
+              <option value="">Loading schedules...</option>
+            </select>
+          </label>
+
+          <label>
+            Service Type
+            <input
+              type="text"
+              name="service_type"
+              maxlength="255"
+              required
+              placeholder="e.g. Preventive Maintenance">
+          </label>
+
+          <label>
+            Notes
+            <textarea
+              name="notes"
+              rows="4"
+              placeholder="Optional maintenance notes"></textarea>
+          </label>
+
+        </div>
+
+        <div
+          id="startMaintenanceMessage"
+          class="form-help"
+          style="display:none; margin-top:16px;">
+        </div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="secondary"
+            onclick="closeStartMaintenance()">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary">
+            Start Maintenance
+          </button>
+        </div>
+
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  try {
+    const schedules = await apiFetch("/maintenance/schedules");
+
+    const scheduleSelect = document.querySelector(
+      "#maintenanceScheduleSelect"
+    );
+
+    if (scheduleSelect) {
+      scheduleSelect.innerHTML = `
+        <option value="">Unscheduled / General Maintenance</option>
+
+        ${schedules.map(schedule => `
+          <option value="${schedule.id}">
+            ${schedule.service_name}
+          </option>
+        `).join("")}
+      `;
+    }
+
+  } catch (error) {
+    console.error("Maintenance schedules error:", error);
+
+    const scheduleSelect = document.querySelector(
+      "#maintenanceScheduleSelect"
+    );
+
+    const messageBox = document.querySelector(
+      "#startMaintenanceMessage"
+    );
+
+    if (scheduleSelect) {
+      scheduleSelect.innerHTML = `
+        <option value="">Unable to load schedules</option>
+      `;
+      scheduleSelect.disabled = true;
+    }
+
+    if (messageBox) {
+      messageBox.textContent =
+        "Unable to load maintenance schedules.";
+
+      messageBox.style.display = "block";
+    }
+  }
+}
+
+function closeStartMaintenance() {
+  document.querySelector("#startMaintenanceModal")?.remove();
+}
+
+async function submitStartMaintenance(event, vehicleId) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const messageBox = document.querySelector("#startMaintenanceMessage");
+
+  const scheduleId = form.maintenance_schedule_id.value;
+  const serviceType = form.service_type.value.trim();
+  const notes = form.notes.value.trim();
+
+  if (messageBox) {
+    messageBox.style.display = "none";
+    messageBox.textContent = "";
+  }
+
+  if (!serviceType) {
+    if (messageBox) {
+      messageBox.textContent = "Please enter the service type.";
+      messageBox.style.display = "block";
+    }
+
+    form.service_type.focus();
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Starting...";
+
+  try {
+    await apiFetch(`/maintenance/vehicles/${vehicleId}/start`, {
+      method: "POST",
+      body: JSON.stringify({
+        maintenance_schedule_id: scheduleId
+          ? Number(scheduleId)
+          : null,
+        service_type: serviceType,
+        notes: notes || null
+      })
+    });
+
+    closeStartMaintenance();
+
+    await renderPanel("maintenance");
+
+  } catch (error) {
+    console.error("Start maintenance error:", error);
+
+    if (messageBox) {
+      messageBox.textContent =
+        error.message || "Unable to start vehicle maintenance.";
+
+      messageBox.style.display = "block";
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = "Start Maintenance";
+  }
+}
+
+function openCompleteMaintenance(maintenanceId) {
+  const existingModal = document.querySelector("#completeMaintenanceModal");
+  existingModal?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "completeMaintenanceModal";
+  modal.className = "modal-backdrop";
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Complete Vehicle Maintenance</h3>
+        <p class="form-help">
+          Record the maintenance work completed and any findings.
+        </p>
+      </div>
+
+      <form
+        id="completeMaintenanceForm"
+        onsubmit="submitCompleteMaintenance(event, ${maintenanceId})">
+
+        <div class="form-grid">
+
+          <label>
+            Services Performed
+            <textarea
+              name="services_performed"
+              rows="4"
+              required
+              placeholder="Describe the maintenance services completed"></textarea>
+          </label>
+
+          <label>
+            Findings
+            <textarea
+              name="findings"
+              rows="4"
+              placeholder="Optional issues or observations found during inspection"></textarea>
+          </label>
+
+          <label>
+            Notes
+            <textarea
+              name="notes"
+              rows="3"
+              placeholder="Optional additional notes"></textarea>
+          </label>
+
+        </div>
+
+        <div
+          id="completeMaintenanceMessage"
+          class="form-help"
+          style="display:none; margin-top:16px;">
+        </div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="secondary"
+            onclick="closeCompleteMaintenance()">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary">
+            Complete Maintenance
+          </button>
+        </div>
+
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+function closeCompleteMaintenance() {
+  document.querySelector("#completeMaintenanceModal")?.remove();
+}
+
+async function submitCompleteMaintenance(event, maintenanceId) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const messageBox = document.querySelector(
+    "#completeMaintenanceMessage"
+  );
+
+  const servicesPerformed =
+    form.services_performed.value.trim();
+
+  const findings =
+    form.findings.value.trim();
+
+  const notes =
+    form.notes.value.trim();
+
+  if (messageBox) {
+    messageBox.style.display = "none";
+    messageBox.textContent = "";
+  }
+
+  if (!servicesPerformed) {
+    if (messageBox) {
+      messageBox.textContent =
+        "Please enter the services performed.";
+      messageBox.style.display = "block";
+    }
+
+    form.services_performed.focus();
+    return;
+  }
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Completing...";
+
+  try {
+    await apiFetch(`/maintenance/${maintenanceId}/complete`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        services_performed: servicesPerformed,
+        findings: findings || null,
+        notes: notes || null
+      })
+    });
+
+    closeCompleteMaintenance();
+
+    await renderPanel("maintenance");
+
+  } catch (error) {
+    console.error("Complete maintenance error:", error);
+
+    if (messageBox) {
+      messageBox.textContent =
+        error.message ||
+        "Unable to complete vehicle maintenance.";
+
+      messageBox.style.display = "block";
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = "Complete Maintenance";
+  }
+}
+
+async function openMaintenanceHistory(vehicleId) {
+  const existingModal = document.querySelector("#maintenanceHistoryModal");
+  existingModal?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "maintenanceHistoryModal";
+  modal.className = "modal-backdrop";
+
+  modal.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Maintenance History</h3>
+        <p class="form-help">
+          Loading maintenance records...
+        </p>
+      </div>
+
+      <div id="maintenanceHistoryContent">
+        <p class="form-help">Please wait...</p>
+      </div>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="secondary"
+          onclick="closeMaintenanceHistory()">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  try {
+    const records = await apiFetch("/maintenance");
+
+    const vehicleRecords = records.filter(record =>
+      Number(record.car_id) === Number(vehicleId)
+    );
+
+    const content = document.querySelector(
+      "#maintenanceHistoryContent"
+    );
+
+    if (!content) return;
+
+    if (!vehicleRecords.length) {
+      content.innerHTML = `
+        <p class="form-help">
+          No maintenance history found for this vehicle.
+        </p>
+      `;
+
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Service</th>
+              <th>Mileage</th>
+              <th>Services Performed</th>
+              <th>Findings</th>
+              <th>Status</th>
+              <th>Performed By</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${vehicleRecords.map(record => `
+              <tr>
+                <td>
+                  ${
+                    record.completed_date ||
+                    record.scheduled_date ||
+                    "—"
+                  }
+                </td>
+
+                <td>
+                  ${record.service_type || "—"}
+                </td>
+
+                <td>
+                  ${Number(record.mileage || 0).toLocaleString("en-PH")} km
+                </td>
+
+                <td>
+                  ${record.services_performed || "—"}
+                </td>
+
+                <td>
+                  ${record.findings || "—"}
+                </td>
+
+                <td>
+                  ${capitalize(record.status || "—")}
+                </td>
+
+                <td>
+                  ${record.performer?.name || "—"}
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+  } catch (error) {
+    console.error("Maintenance history error:", error);
+
+    const content = document.querySelector(
+      "#maintenanceHistoryContent"
+    );
+
+    if (content) {
+      content.innerHTML = `
+        <p class="form-help">
+          Unable to load maintenance history.
+        </p>
+      `;
+    }
+  }
+}
+
+function closeMaintenanceHistory() {
+  document.querySelector("#maintenanceHistoryModal")?.remove();
+}
 
 const panels = {
   customer: {
@@ -1821,10 +3110,17 @@ const panels = {
               0,
               Number(booking.total_price || 0) - approvedPaid
             );
+          
+          const bookingStatus =
+            (booking.status || "").toLowerCase();
 
           let paymentState;
 
-          if (remainingBalance <= 0) {
+          if (bookingStatus === "cancelled") {
+            paymentState =
+              `<span class="status trip">Cancelled</span>`;
+          }
+          else if (remainingBalance <= 0) {
             paymentState =
               `<span class="status available">Fully Paid</span>`;
           }
@@ -1840,6 +3136,27 @@ const panels = {
             paymentState =
               `<span class="status reserved">Reservation Required · ${formatPeso(requiredReservationFee)}</span>`;
           }
+         
+          const actions =
+            bookingStatus === "pending" && bookingPayments.length === 0
+              ? `
+                  <div class="booking-actions">
+                    <button
+                      type="button"
+                      class="secondary small"
+                      onclick="editCustomerBooking(${booking.id})">
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      class="secondary small"
+                      onclick="cancelCustomerBooking(${booking.id})">
+                      Cancel
+                    </button>
+                  </div>
+                `
+              : "—";
 
           return [
             "BK-" + booking.id,
@@ -1854,13 +3171,23 @@ const panels = {
 
             formatPeso(booking.total_price),
 
-            paymentState
-          ];
+            paymentState,
+
+            actions
+            ];
         });
 
         return table(
           "My Bookings",
-          ["Booking ID", "Vehicle", "Pickup", "Return", "Total", "Payment Status"],
+          [
+            "Booking ID",
+            "Vehicle",
+            "Pickup",
+            "Return",
+            "Total",
+            "Payment Status",
+            "Actions"
+          ],
           rows
         );
 
@@ -1997,7 +3324,13 @@ const panels = {
         type="button"
         onclick="submitBooking()"
         ${!isVerified ? "disabled" : ""}>
-        ${isVerified ? "Submit Booking" : "Verification Required"}
+        ${
+          !isVerified
+            ? "Verification Required"
+            : editingBookingId
+            ? "Update Booking"
+            : "Submit Booking"
+        }
       </button>
 
       <p id="availabilityMessage" style="color:red; margin-top:10px;"></p>
@@ -2148,7 +3481,7 @@ const panels = {
 
       new Date(booking.return_date).toLocaleString("en-PH"),
 
-      capitalize(booking.status || "pending")
+      bookingStatusBadge(booking.status)
     ]);
 
     return table(
@@ -2332,6 +3665,7 @@ const panels = {
     `;
   },
     vehicles: employeeVehicleCards,
+    maintenance: () => maintenancePanel(),
     payments: () => paymentPanel(),
     chat: async () => {
 
@@ -2668,7 +4002,9 @@ const panels = {
 
   ${carsHTML}
   `;
-},    
+},
+    maintenance: () => maintenancePanel(),
+
     reservations: async () => {
 
       const [bookings, payments] = await Promise.all([
@@ -2719,21 +4055,27 @@ const panels = {
 
         let paymentState;
 
-        if (totalPrice <= 0) {
+        if ((booking.status || "").toLowerCase() === "cancelled") {
+          paymentState = "—";
+        }
+        else if (totalPrice <= 0) {
 
           paymentState =
             `<span class="status reserved">No Valid Total</span>`;
 
-        } else if (remainingBalance <= 0) {
+        } 
+        else if (remainingBalance <= 0) {
 
           paymentState =
             `<span class="status available">Fully Paid</span>`;
-        } else if (hasPendingPayment) {
+        } 
+        else if (hasPendingPayment) {
 
           paymentState =
             `<span class="status reserved">For Verification</span>`;
 
-        } else if (approvedPaid >= reservationFee) {
+        } 
+        else if (approvedPaid >= reservationFee) {
 
           paymentState =
             `<span class="status reserved">Balance Due · ${formatPeso(remainingBalance)}</span>`;
@@ -2941,7 +4283,30 @@ function bookingSummary() {
       Approval required before pickup.
     </p>
 
+    <div class="rental-policy-box">
+      <strong>Rental Policy</strong>
+      <p id="bookingRentalPolicy">Loading policy...</p>
+    </div>
+
   </aside>`;
+}
+
+async function loadBookingRentalPolicy() {
+  try {
+    const settings = await getSystemSettings();
+
+    const policyElement =
+      document.querySelector("#bookingRentalPolicy");
+
+    if (!policyElement) return;
+
+    policyElement.textContent =
+      settings.rental_policy ||
+      "Please contact AAV Car Rental Services for the current rental policy.";
+
+  } catch (error) {
+    console.error("Failed to load rental policy:", error);
+  }
 }
 
 
@@ -2970,6 +4335,11 @@ async function customerPaymentPanel(payments) {
 
   const reservationFeePerDay =
     Number(settings.reservation_fee || 500);
+
+  const paymentMethods = (settings.payment_methods || "")
+    .split(",")
+    .map(method => method.trim())
+    .filter(Boolean);
 
   const bookings = await getMyBookings();
   const pendingBookingIds = new Set(
@@ -3042,7 +4412,11 @@ async function customerPaymentPanel(payments) {
   const history = payments.map(payment => [
     new Date(payment.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }),
     payment.booking?.car ? `#${payment.booking_id} · ${payment.booking.car.brand} ${payment.booking.car.model}` : `Booking #${payment.booking_id}`,
-    payment.method === "gcash" ? "GCash" : "Bank transfer",
+    payment.method === "cash"
+      ? "Cash"
+      : payment.method === "gcash"
+        ? "GCash"
+        : "Bank Transfer",
     formatPeso(payment.amount),
     paymentStatus(payment.status),
   ]);
@@ -3057,24 +4431,40 @@ async function customerPaymentPanel(payments) {
           <strong>GCash</strong>
 
           <img
-            src="./assets/gcash-qr.jpg"
+            src="./assets/gcash-qr.png"
             alt="GCash QR Code"
             class="payment-qr"
           >
 
           <span>Scan the QR code to pay via GCash.</span>
+
+          <a
+            href="./assets/gcash-qr.png"
+            download="AAV-GCash-QR.png"
+            class="qr-download-btn"
+          >
+            Save QR
+          </a>
         </div>
 
         <div class="payment-qr-card">
           <strong>Bank Transfer</strong>
 
           <img
-            src="./assets/eastwest-qr.jpg"
+            src="./assets/eastwest-qr.png"
             alt="EastWest Bank QR Code"
             class="payment-qr"
           >
 
           <span>Scan the QR code to pay via bank transfer.</span>
+
+          <a
+            href="./assets/eastwest-qr.png"
+            download="AAV-Bank-Transfer-QR.png"
+            class="qr-download-btn"
+          >
+            Save QR
+          </a>
         </div>
 
       </div>
@@ -3117,8 +4507,32 @@ async function customerPaymentPanel(payments) {
             <strong id="paymentRemaining">₱0.00</strong>
           </div>
         </div>
-        <label>Payment method<select name="method" required><option value="gcash">GCash</option><option value="bank_transfer">Bank transfer</option></select></label>
-        <label>Amount sent (₱)<input name="amount" type="number" min="1" step="0.01" placeholder="e.g. 500" required></label>
+        <label>
+          Payment method
+          <select name="method" required>
+            ${paymentMethods.map(method => {
+              const value = method
+                .toLowerCase()
+                .replace(/\s+/g, "_");
+
+              return `<option value="${value}">${method}</option>`;
+            }).join("")}
+          </select>
+        </label>
+
+        <label>
+          Amount sent (₱)
+          <input
+            name="amount"
+            id="paymentAmount"
+            type="number"
+            min="1"
+            step="0.01"
+            placeholder="Enter amount"
+            required
+          >
+        </label>
+
         <label>Date and time paid<input name="paid_at" type="datetime-local" max="${localDateTimeNow()}" required></label>
         <label>Payer / sender name<input name="payer_name" maxlength="255" autocomplete="name" required></label>
         <label>Transaction reference no.<input name="reference_number" maxlength="100" required></label>
@@ -3133,49 +4547,420 @@ async function customerPaymentPanel(payments) {
 }
 
 function updatePaymentBreakdown() {
-  const select = document.querySelector("#paymentBooking");
+  const bookingSelect = document.querySelector("#paymentBooking");
 
-  if (!select || !select.value) return;
+  if (!bookingSelect) return;
 
-  const option = select.options[select.selectedIndex];
+  const selectedOption =
+    bookingSelect.options[bookingSelect.selectedIndex];
 
-  const total = Number(option.dataset.total || 0);
-  const reservation = Number(option.dataset.reservation || 0);
-  const paid = Number(option.dataset.paid || 0);
-  const remaining = Number(option.dataset.remaining || 0);
-  const reservationPaid = paid >= reservation;
-  const amountInput = document.querySelector('input[name="amount"]');
+  if (!selectedOption || !selectedOption.value) return;
 
-  document.querySelector("#paymentTotal").textContent =
-    formatPeso(total);
+  const total = Number(selectedOption.dataset.total || 0);
+  const reservation = Number(selectedOption.dataset.reservation || 0);
+  const paid = Number(selectedOption.dataset.paid || 0);
+  const remaining = Number(selectedOption.dataset.remaining || 0);
 
-  document.querySelector("#paymentReservation").innerHTML =
-    reservationPaid
-      ? `${formatPeso(reservation)} <span class="status approved">Paid</span>`
-      : `${formatPeso(reservation)} <span class="status pending">Required</span>`;
+  const totalElement = document.querySelector("#paymentTotal");
+  const reservationElement = document.querySelector("#paymentReservation");
+  const paidElement = document.querySelector("#paymentPaid");
+  const remainingElement = document.querySelector("#paymentRemaining");
+  const amountInput = document.querySelector("#paymentAmount");
 
-  document.querySelector("#paymentPaid").textContent =
-    formatPeso(paid);
+  if (totalElement) {
+    totalElement.textContent = formatPeso(total);
+  }
 
-  document.querySelector("#paymentRemaining").textContent =
-    formatPeso(remaining);
+  if (reservationElement) {
+    reservationElement.textContent = formatPeso(reservation);
+  }
+
+  if (paidElement) {
+    paidElement.textContent = formatPeso(paid);
+  }
+
+  if (remainingElement) {
+    remainingElement.textContent = formatPeso(remaining);
+  }
 
   if (amountInput) {
-    if (reservationPaid) {
-      amountInput.placeholder =
-        `Remaining balance: ${formatPeso(remaining)}`;
+    const amountToPay = Math.min(reservation, remaining);
 
-      amountInput.max = remaining;
-    } else {
-      amountInput.placeholder =
-        `Reservation fee: ${formatPeso(reservation)}`;
-
-      amountInput.max = reservation;
-    }
+    amountInput.value = amountToPay;
+    amountInput.max = remaining;
   }
 }
 
+async function openCashPaymentBookings() {
+  try {
+    const [bookings, payments] = await Promise.all([
+      getBookings(true),
+      getPayments(true)
+    ]);
+
+    const eligibleBookings = bookings.filter(booking => {
+
+      const bookingPayments = payments.filter(payment =>
+        Number(payment.booking_id) === Number(booking.id)
+      );
+
+      const approvedPaid = bookingPayments
+        .filter(payment => payment.status === "approved")
+        .reduce(
+          (total, payment) => total + Number(payment.amount || 0),
+          0
+        );
+
+      const remainingBalance =
+        Number(booking.total_price || 0) - approvedPaid;
+
+      return (
+        booking.status === "confirmed" &&
+        approvedPaid > 0 &&
+        remainingBalance > 0
+      );
+    });
+
+    if (!eligibleBookings.length) {
+      alert("No bookings currently have a remaining cash balance.");
+      return;
+    }
+
+    workspaceTitle.textContent = "Record Cash Payment";
+
+    workspaceContent.innerHTML = `
+      <section class="panel">
+        <h3>Select Booking</h3>
+
+        <div class="mini-list">
+          ${eligibleBookings.map(booking => {
+
+            const approvedPaid = payments
+              .filter(payment =>
+                Number(payment.booking_id) === Number(booking.id) &&
+                payment.status === "approved"
+              )
+              .reduce(
+                (total, payment) =>
+                  total + Number(payment.amount || 0),
+                0
+              );
+
+            const remainingBalance =
+              Number(booking.total_price || 0) - approvedPaid;
+
+            const customerName =
+              booking.user?.name || "Customer";
+
+            const vehicleName = booking.car
+              ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+              : "Vehicle unavailable";
+
+            return `
+              <div>
+                <span>
+                  Booking #${booking.id} ·
+                  ${customerName} ·
+                  ${vehicleName}
+                </span>
+
+                <strong>
+                  Remaining: ${formatPeso(remainingBalance)}
+                </strong>
+
+                <button
+                  class="primary small"
+                  type="button"
+                  onclick="recordCashPayment(
+                    ${booking.id},
+                    ${remainingBalance},
+                    '${customerName.replace(/'/g, "\\'")}'
+                  )">
+                  Record Cash
+                </button>
+              </div>
+            `;
+          }).join("")}
+        </div>
+
+        <button
+          class="secondary"
+          type="button"
+          onclick="renderPanel('payments')">
+          Back to Payments
+        </button>
+      </section>
+    `;
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function openCashPaymentBookings() {
+  try {
+    const [bookings, payments] = await Promise.all([
+      getBookings(true),
+      getPayments(true)
+    ]);
+
+    const eligibleBookings = bookings
+      .map(booking => {
+        const approvedPaid = payments
+          .filter(payment =>
+            Number(payment.booking_id) === Number(booking.id) &&
+            payment.status === "approved"
+          )
+          .reduce(
+            (total, payment) =>
+              total + Number(payment.amount || 0),
+            0
+          );
+
+        const totalPrice = Number(booking.total_price || 0);
+
+        const remainingBalance = Math.max(
+          0,
+          totalPrice - approvedPaid
+        );
+
+        return {
+          booking,
+          approvedPaid,
+          totalPrice,
+          remainingBalance
+        };
+      })
+      .filter(item =>
+        item.booking.status === "confirmed" &&
+        item.approvedPaid > 0 &&
+        item.remainingBalance > 0
+      );
+
+    workspaceTitle.textContent = "Record Cash Payment";
+
+    if (!eligibleBookings.length) {
+      workspaceContent.innerHTML = `
+        <section class="panel">
+          <h3>Record Cash Payment</h3>
+
+          <p class="form-help">
+            No confirmed bookings currently have a remaining balance.
+          </p>
+
+          <button
+            class="secondary"
+            type="button"
+            onclick="renderPanel('payments')"
+          >
+            Back to Payments
+          </button>
+        </section>
+      `;
+
+      return;
+    }
+
+    const rows = eligibleBookings.map(item => {
+      const booking = item.booking;
+
+      const customerName =
+        booking.user?.name || "Customer";
+
+      const vehicleName = booking.car
+        ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
+        : "Vehicle unavailable";
+
+      const safeCustomerName =
+        customerName.replace(/'/g, "\\'");
+
+      return [
+        `BK-${booking.id}`,
+
+        customerName,
+
+        vehicleName,
+
+        formatPeso(item.totalPrice),
+
+        formatPeso(item.approvedPaid),
+
+        `<strong>${formatPeso(item.remainingBalance)}</strong>`,
+
+        `
+          <button
+            class="primary small"
+            type="button"
+            onclick="recordCashPayment(
+              ${booking.id},
+              ${item.remainingBalance},
+              '${safeCustomerName}'
+            )"
+          >
+            Record Cash
+          </button>
+        `
+      ];
+    });
+
+    workspaceContent.innerHTML = `
+      <section class="panel">
+
+        <div style="margin-bottom: 20px;">
+          <h3>Bookings with Remaining Balance</h3>
+
+          <p class="form-help">
+            Select a booking after receiving the customer's remaining balance in cash.
+          </p>
+        </div>
+
+        ${table(
+          "Cash Payment Records",
+          [
+            "Booking",
+            "Customer",
+            "Vehicle",
+            "Total Cost",
+            "Paid",
+            "Remaining",
+            "Action"
+          ],
+          rows
+        )}
+
+        <div style="margin-top: 20px;">
+          <button
+            class="secondary"
+            type="button"
+            onclick="renderPanel('payments')"
+          >
+            Back to Payments
+          </button>
+        </div>
+
+      </section>
+    `;
+
+  } catch (error) {
+    console.error("Failed to load cash payment bookings:", error);
+    alert(error.message || "Failed to load bookings.");
+  }
+}
+
+function recordCashPayment(bookingId, remainingBalance, customerName) {
+  const modal = document.querySelector("#cashPaymentModal");
+
+  document.querySelector("#cashPaymentBookingId").value = bookingId;
+  document.querySelector("#cashPaymentRemaining").value = remainingBalance;
+
+  document.querySelector("#cashBookingId").textContent =
+    `BK-${bookingId}`;
+
+  document.querySelector("#cashCustomerName").textContent =
+    customerName;
+
+  document.querySelector("#cashRemainingBalance").textContent =
+    formatPeso(remainingBalance);
+
+  const amountInput =
+    document.querySelector("#cashPaymentAmount");
+
+  amountInput.value = remainingBalance;
+  amountInput.max = remainingBalance;
+
+  modal.classList.add("open");
+}
+
+function closeCashPaymentModal() {
+  const modal = document.querySelector("#cashPaymentModal");
+
+  modal.classList.remove("open");
+
+  document.querySelector("#cashPaymentForm")?.reset();
+}
+
+document.querySelector("#cashPaymentForm")?.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const bookingId =
+    Number(document.querySelector("#cashPaymentBookingId").value);
+
+  const remainingBalance =
+    Number(document.querySelector("#cashPaymentRemaining").value);
+
+  const amount =
+    Number(document.querySelector("#cashPaymentAmount").value);
+
+  const customerName =
+    document.querySelector("#cashCustomerName").textContent.trim();
+
+  if (!amount || amount <= 0) {
+    alert("Please enter a valid cash amount.");
+    return;
+  }
+
+  if (amount > remainingBalance) {
+    alert(
+      `Cash payment cannot exceed the remaining balance of ${formatPeso(remainingBalance)}.`
+    );
+    return;
+  }
+
+  try {
+    const response = await apiFetch("/payments/cash", {
+      method: "POST",
+      body: JSON.stringify({
+        booking_id: bookingId,
+        amount: amount,
+        payer_name: customerName
+      })
+    });
+
+    closeCashPaymentModal();
+
+    const successMessage = document.createElement("div");
+
+    successMessage.className = "cash-success-message";
+    successMessage.textContent =
+      "✓ " + (response.message || "Cash payment recorded successfully.");
+
+    document.body.appendChild(successMessage);
+
+    setTimeout(() => {
+      successMessage.remove();
+    }, 3000);
+
+    paymentsCache = null;
+    paymentsCacheTime = 0;
+
+    await openCashPaymentBookings();
+
+  } catch (error) {
+    console.error("Cash payment failed:", error);
+
+    alert(
+      error.message ||
+      "Failed to record cash payment."
+    );
+  }
+});
+
 function adminPaymentPanel(payments) {
+  const cashPaymentSection = `
+    <section class="panel">
+      <h3>Record Cash Payment</h3>
+      <p class="form-help">
+        Record the remaining balance paid by the customer in cash.
+      </p>
+
+      <button
+        class="primary"
+        type="button"
+        onclick="openCashPaymentBookings()">
+        Record Cash Payment
+      </button>
+    </section>
+  `;
   const pending = payments.filter(payment => payment.status === "pending");
   const rows = pending.map(payment => [
     `#${payment.id}`,
@@ -3184,14 +4969,51 @@ function adminPaymentPanel(payments) {
     `${formatPeso(payment.amount)}<br><small>${payment.payer_name} · ${new Date(payment.paid_at).toLocaleString("en-PH")}</small>`,
     `<button class="secondary small" type="button" onclick="showPaymentProof(${payment.id})">View proof</button> <button class="primary small" type="button" onclick="reviewPayment(${payment.id}, 'approved')">Approve</button> <button class="link-button" type="button" onclick="reviewPayment(${payment.id}, 'rejected')">Reject</button>`,
   ]);
-  const history = payments.filter(payment => payment.status !== "pending").map(payment => [
-    `#${payment.id}`,
-    payment.submitter?.name || "Customer",
-    formatPeso(payment.amount),
-    paymentStatus(payment.status),
-    payment.review_note || "—",
-  ]);
-  return `${metrics([["Awaiting review", String(pending.length)], ["Approved", String(payments.filter(p => p.status === "approved").length)], ["Rejected", String(payments.filter(p => p.status === "rejected").length)]])}${table("Payment confirmations awaiting review", ["ID", "Customer / booking", "Method / reference", "Amount / sender", "Review"], rows.length ? rows : [["—", "No payments awaiting review", "—", "—", "—"]])}${table("Reviewed payment history", ["ID", "Customer", "Amount", "Status", "Admin note"], history.length ? history : [["—", "No reviewed payments", "—", "—", "—"]])}`;
+  const history = payments
+    .filter(payment => payment.status !== "pending")
+    .map(payment => [
+      `#${payment.id}`,
+      `BK-${payment.booking_id}`,
+
+      payment.submitter?.name || "Customer",
+
+      payment.method === "cash"
+        ? "Cash"
+        : payment.method === "gcash"
+          ? "GCash"
+          : "Bank Transfer",
+
+      formatPeso(payment.amount),
+
+      paymentStatus(payment.status),
+
+      payment.review_note || "—",
+    ]);
+return `
+  ${cashPaymentSection}
+
+  ${metrics([
+    ["Awaiting review", String(pending.length)],
+    ["Approved", String(payments.filter(p => p.status === "approved").length)],
+    ["Rejected", String(payments.filter(p => p.status === "rejected").length)]
+  ])}
+
+  ${table(
+    "Payment confirmations awaiting review",
+    ["ID", "Customer / booking", "Method / reference", "Amount / sender", "Review"],
+    rows.length
+      ? rows
+      : [["—", "No payments awaiting review", "—", "—", "—"]]
+  )}
+
+  ${table(
+    "Reviewed payment history",
+    ["Payment ID", "Booking ID", "Customer", "Method", "Amount", "Status", "Admin note"],
+    history.length
+      ? history
+      : [["—", "No reviewed payments", "—", "—", "—", "—"]]
+  )}
+`;
 }
 
 function employeePaymentPanel(payments) {
@@ -3206,7 +5028,11 @@ function employeePaymentPanel(payments) {
 
     payment.method === "gcash"
       ? "GCash"
-      : "Bank transfer",
+      : payment.method === "bank_transfer"
+      ? "Bank transfer"
+      : payment.method === "cash"
+      ? "Cash"
+      : capitalize(payment.method || "Unknown"),
 
     formatPeso(payment.amount),
 
@@ -3269,7 +5095,11 @@ async function viewEmployeePayment(paymentId) {
     const method =
       payment.method === "gcash"
         ? "GCash"
-        : "Bank Transfer";
+        : payment.method === "bank_transfer"
+        ? "Bank Transfer"
+        : payment.method === "cash"
+        ? "Cash"
+        : capitalize(payment.method || "Unknown");
 
     workspaceTitle.textContent = "Payment Details";
 
@@ -3346,12 +5176,22 @@ async function viewEmployeePayment(paymentId) {
 
         <div class="form-grid">
 
-          <button
-            type="button"
-            class="primary"
-            onclick="showPaymentProof(${payment.id})">
-            View Payment Proof
-          </button>
+          ${
+            payment.method === "cash"
+              ? `
+                <div class="form-help">
+                  No payment proof required for cash payment.
+                </div>
+              `
+              : `
+                <button
+                  type="button"
+                  class="primary"
+                  onclick="showPaymentProof(${payment.id})">
+                  View Payment Proof
+                </button>
+              `
+          }
 
           <button
             type="button"
@@ -3601,7 +5441,7 @@ async function trackingPanel() {
   return `
     <div class="tracking-layout">
 
-      <section class="map-card">
+      <section class="tracking-map-card">
 
         <div class="tracking-header">
           <h3>Interactive Map</h3>
@@ -4154,6 +5994,15 @@ async function reportsPanel() {
     0
   );
 
+  const cashPayments = approvedPayments.filter(
+    payment => payment.method === "cash"
+  );
+
+  const cashTotal = cashPayments.reduce(
+    (total, payment) => total + Number(payment.amount || 0),
+    0
+  );
+
   const paymentRows = [
     [
       "GCash",
@@ -4164,6 +6013,11 @@ async function reportsPanel() {
       "Bank Transfer",
       bankPayments.length,
       formatPeso(bankTotal)
+    ],
+    [
+      "Cash",
+      cashPayments.length,
+      formatPeso(cashTotal)
     ]
   ];
 
@@ -4175,6 +6029,12 @@ async function reportsPanel() {
   const bookingGroups = {};
 
   bookings.forEach(booking => {
+
+    if (!["confirmed", "ongoing", "completed"].includes(
+      (booking.status || "").toLowerCase()
+    )) {
+      return;
+    }
 
     const date = new Date(booking.pickup_date);
 
@@ -4248,7 +6108,7 @@ async function reportsPanel() {
 
       ${table(
         "Booking Trends",
-        ["Month", "Bookings", "Utilization"],
+        ["Month", "Bookings", "Fleet Used"],
         bookingRows.length
           ? bookingRows
           : [["—", "0", "0%"]]
@@ -4391,6 +6251,11 @@ const chatClose = document.querySelector("#chatClose");
 const chatForm = document.querySelector("#chatForm");
 const chatInput = document.querySelector("#chatInput");
 const chatLog = document.querySelector("#chatLog");
+
+function useChatSuggestion(question) {
+  chatInput.value = question;
+  chatForm.requestSubmit();
+}
 
 
 chatFab.addEventListener("click", () => chatWindow.classList.toggle("open"));
@@ -4911,8 +6776,18 @@ async function submitBooking() {
 
   try {
 
-    await apiFetch("/bookings", {
-      method: "POST",
+    const isEditing = editingBookingId !== null;
+
+    const endpoint = isEditing
+      ? `/bookings/${editingBookingId}/customer-update`
+      : "/bookings";
+
+    const method = isEditing
+      ? "PATCH"
+      : "POST";
+
+    await apiFetch(endpoint, {
+      method: method,
       body: JSON.stringify(bookingData)
     });
 
@@ -4920,17 +6795,26 @@ async function submitBooking() {
     await getBookings(true);
 
     if (message) {
-      message.textContent =
-        "✅ Booking submitted successfully. Redirecting to payment...";
+      message.textContent = isEditing
+        ? "✅ Booking updated successfully."
+        : "✅ Booking submitted successfully. Redirecting to payment...";
+
       message.style.color = "green";
     }
 
     if (submitBtn) {
-      submitBtn.textContent = "Submitted";
+      submitBtn.textContent = isEditing
+        ? "Updated"
+        : "Submitted";
     }
 
     setTimeout(() => {
-      renderPanel("payments");
+      if (isEditing) {
+        editingBookingId = null;
+        renderPanel("my-bookings");
+      } else {
+        renderPanel("payments");
+      }
     }, 1500);
 
   } catch (error) {
@@ -4944,7 +6828,9 @@ async function submitBooking() {
 
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Submit Booking";
+      submitBtn.textContent = isEditing
+        ? "Update Booking"
+        : "Submit Booking";
     }
   }
 }
@@ -5048,5 +6934,158 @@ async function submitBooking() {
     }, { rootMargin: "-45% 0px -45% 0px" });
     sections.forEach(section => sectionObserver.observe(section));
   }
+
+    /* ===========================
+     Landing Vehicle Details Modal
+  =========================== */
+
+  const carModal = document.querySelector("#carModal");
+  const modalImage = document.querySelector("#modalImage");
+  const modalTitle = document.querySelector("#modalTitle");
+  const modalRates = document.querySelector("#modalRates");
+
+  const landingVehicles = {
+    vios: {
+      name: "Toyota Vios",
+      image: "./assets/toyota-vios.jpg",
+      rates: [
+        ["Metro Manila — 12 Hrs", "₱1,499"],
+        ["Metro Manila — 24 Hrs", "₱1,999"],
+        ["Outside Metro Manila — 12 Hrs", "₱1,999"],
+        ["Outside Metro Manila — 24 Hrs", "₱2,499"],
+        ["Unlimited Mileage", "₱2,899"]
+      ]
+    },
+
+    veloz: {
+      name: "Toyota Veloz",
+      image: "./assets/toyota-veloz.jpg",
+      rates: [
+        ["Metro Manila — 12 Hrs", "₱2,399"],
+        ["Metro Manila — 24 Hrs", "₱2,799"],
+        ["Outside Metro Manila — 12 Hrs", "₱2,799"],
+        ["Outside Metro Manila — 24 Hrs", "₱3,299"],
+        ["Unlimited Mileage", "₱3,799"]
+      ]
+    }
+  };
+
+  function openCarModal(carKey) {
+    const vehicle = landingVehicles[carKey];
+
+    if (!vehicle || !carModal) return;
+
+    modalImage.src = vehicle.image;
+    modalImage.alt = vehicle.name;
+    modalTitle.textContent = vehicle.name;
+
+    modalRates.innerHTML = vehicle.rates
+      .map(([label, value]) => `
+        <div>
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `)
+      .join("");
+
+    carModal.classList.add("open");
+    carModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+  }
+
+  function closeCarModal() {
+    if (!carModal) return;
+
+    carModal.classList.remove("open");
+    carModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+  }
+
+  document.querySelectorAll(".view-details").forEach(button => {
+    button.addEventListener("click", () => {
+      openCarModal(button.dataset.car);
+    });
+  });
+
+  document.querySelectorAll("#carModal [data-close-modal]").forEach(control => {
+    control.addEventListener("click", closeCarModal);
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && carModal?.classList.contains("open")) {
+      closeCarModal();
+    }
+  });
 })();
 
+let selectedLoginType = "customer";
+
+// Navbar Login Dropdown
+const loginDropdownBtn = document.getElementById("loginDropdownBtn");
+const loginDropdownMenu = document.getElementById("loginDropdownMenu");
+
+loginDropdownBtn?.addEventListener("click", () => {
+  loginDropdownMenu?.classList.toggle("open");
+});
+
+document.addEventListener("click", (event) => {
+  const clickedInsideDropdown = event.target.closest(".login-dropdown");
+
+  if (!clickedInsideDropdown) {
+    loginDropdownMenu?.classList.remove("open");
+  }
+});
+
+const navCustomerLogin = document.getElementById("navCustomerLogin");
+
+navCustomerLogin?.addEventListener("click", () => {
+  selectedLoginType = "customer";
+
+  updateLoginMode();
+
+  loginDropdownMenu?.classList.remove("open");
+
+  setView("login");
+});
+
+const navStaffLogin = document.getElementById("navStaffLogin");
+
+navStaffLogin?.addEventListener("click", () => {
+  selectedLoginType = "staff";
+
+  updateLoginMode();
+
+  loginDropdownMenu?.classList.remove("open");
+
+  setView("login");
+});
+
+function updateLoginMode() {
+  const loginFormTitle = document.getElementById("loginFormTitle");
+  const loginWelcomeText = document.getElementById("loginWelcomeText");
+  const customerRegisterLink = document.getElementById("customerRegisterLink");
+
+  if (selectedLoginType === "staff") {
+    if (loginFormTitle) loginFormTitle.textContent = "Staff Login";
+
+    if (loginWelcomeText) {
+      loginWelcomeText.textContent =
+        "Sign in using your authorized Admin or Employee account.";
+    }
+
+    if (customerRegisterLink) {
+      customerRegisterLink.style.display = "none";
+    }
+  } else {
+    if (loginFormTitle) loginFormTitle.textContent = "Customer Login";
+
+    if (loginWelcomeText) {
+      loginWelcomeText.textContent =
+        "Sign in to your customer account to manage your bookings.";
+    }
+
+    if (customerRegisterLink) {
+      customerRegisterLink.style.display = "";
+    }
+  }
+}

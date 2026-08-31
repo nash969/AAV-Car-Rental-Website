@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AAV Car Rental Services</title>
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="landing-page-style.css" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -51,9 +50,25 @@
             <a href="#requirements">Requirements</a>
             <a href="#contact">Contact</a>
 
-            <button class="btn btn-ghost btn-sm" type="button" data-route="login">
-              Log In
-            </button>
+            <div class="login-dropdown">
+              <button
+                class="btn btn-ghost btn-sm login-dropdown-btn"
+                type="button"
+                id="loginDropdownBtn"
+              >
+                Log In
+              </button>
+
+              <div class="login-dropdown-menu" id="loginDropdownMenu">
+                <button type="button" id="navCustomerLogin">
+                  Customer Login
+                </button>
+
+                <button type="button" id="navStaffLogin">
+                  Staff Login
+                </button>
+              </div>
+            </div>
 
             <button class="btn btn-secondary btn-sm" type="button" data-route="register">
               Sign Up
@@ -109,7 +124,7 @@
 
             <div class="hero-visual">
               <img
-                src="./assets/toyota-suv.jpg"
+                src="./assets/toyota-veloz.jpg"
                 alt="Silver Toyota SUV rental vehicle"
               />
 
@@ -177,16 +192,13 @@
               <p class="eyebrow">About AAV</p>
               <h2>A cleaner, easier way to rent your next ride.</h2>
               <p>
-                AAV Car Rental Services provides affordable, reliable, and comfortable
-                vehicle rental options for different travel needs. Whether for business
-                trips, family vacations, airport transfers, special events, or road trips,
-                AAV is committed to making every rental convenient, safe, and hassle-free.
+                AAV Car Rental Services is a reliable and customer-focused car rental service providing clean, well-maintained, and comfortable vehicles for personal, business, and travel needs. We aim to make every journey convenient, safe, and hassle-free by offering affordable rates and dependable service.
               </p>
               <ul class="check-list">
-                <li>Affordable</li>
-                <li>Reliable</li>
-                <li>Comfortable</li>
-                <li>Professional Service</li>
+                <li>Clean & Well-Maintained</li>
+                <li>Safe & Comfortable</li>
+                <li>Affordable Rates</li>
+                <li>Dependable Service</li>
               </ul>
               <a class="btn btn-outline" href="#why-aav">Learn More</a>
             </div>
@@ -196,50 +208,89 @@
 
       <section class="section section-soft" id="cars">
           <div class="container">
+
             <div class="section-heading reveal">
               <p class="eyebrow">Featured Fleet</p>
               <h2>Choose the vehicle that fits your journey.</h2>
             </div>
 
-            <div class="vehicle-grid">
-              <article class="vehicle-card reveal">
-                <img src="./assets/toyota-suv.jpg" alt="Toyota Veloz SUV" />
-                <div class="vehicle-body">
-                  <span class="status available">Available</span>
-                  <h3>Toyota Veloz</h3>
-                  <p>SUV · Automatic · Gasoline · 7 seats</p>
-                  <div class="price-row">
-                    <strong>₱3,500/day</strong>
-                    <button type="button" data-route="login">Book Now</button>
-                  </div>
-                </div>
-              </article>
+            <div class="cars-grid">
 
-              <article class="vehicle-card reveal">
-                <img src="./assets/toyota-vios.jpg" alt="Toyota Vios sedan" />
-                <div class="vehicle-body">
-                  <span class="status reserved">Reserved</span>
+              <!-- Toyota Vios -->
+              <article class="car-card reveal">
+                <img
+                  src="./assets/toyota-vios.jpg"
+                  alt="Toyota Vios"
+                />
+
+                <div class="card-body">
                   <h3>Toyota Vios</h3>
-                  <p>Sedan · Automatic · Gasoline · 5 seats</p>
-                  <div class="price-row">
-                    <strong>₱2,000/day</strong>
-                    <button type="button" data-route="login">View Details</button>
+
+                  <p>
+                    A practical rental choice for everyday city travel
+                    and personal trips.
+                  </p>
+
+                  <strong>From ₱1,499</strong>
+
+                  <div class="card-actions">
+                    <button
+                      class="btn btn-outline view-details"
+                      type="button"
+                      data-car="vios"
+                    >
+                      View Details
+                    </button>
+
+                    <button
+                      class="btn btn-primary landing-book-now"
+                      type="button"
+                      data-route="login"
+                    >
+                      Book Now
+                    </button>
                   </div>
                 </div>
               </article>
 
-              <article class="vehicle-card reveal">
-                <img src="./assets/toyota-fortuner.jpg" alt="Toyota Fortuner SUV" />
-                <div class="vehicle-body">
-                  <span class="status trip">On Trip</span>
-                  <h3>Toyota Fortuner</h3>
-                  <p>SUV · Automatic · Diesel · 7 seats</p>
-                  <div class="price-row">
-                    <strong>₱4,500/day</strong>
-                    <button type="button" data-route="login">View Details</button>
+
+              <!-- Toyota Veloz -->
+              <article class="car-card reveal">
+                <img
+                  src="./assets/toyota-veloz.jpg"
+                  alt="Toyota Veloz"
+                />
+
+                <div class="card-body">
+                  <h3>Toyota Veloz</h3>
+
+                  <p>
+                    A comfortable vehicle option for family trips,
+                    airport transfers, and longer drives.
+                  </p>
+
+                  <strong>From ₱2,399</strong>
+
+                  <div class="card-actions">
+                    <button
+                      class="btn btn-outline view-details"
+                      type="button"
+                      data-car="veloz"
+                    >
+                      View Details
+                    </button>
+
+                    <button
+                      class="btn btn-primary landing-book-now"
+                      type="button"
+                      data-route="login"
+                    >
+                      Book Now
+                    </button>
                   </div>
                 </div>
               </article>
+
             </div>
           </div>
         </section>
@@ -326,39 +377,6 @@
           </div>
         </section>
 
-        <section class="section split" id="platform">
-          <div>
-            <p class="kicker">Built for everyone</p>
-            <h2>Built for renters, employees, and administrators.</h2>
-            <div class="feature-list">
-              <div>
-                <strong>Fast online booking</strong>
-                <span>Submit customer details, documents, and reservation requests from one flow.</span>
-              </div>
-              <div>
-                <strong>Secure requirements</strong>
-                <span>Driver's license, primary ID, proof of billing, company ID, and selfie holding ID.</span>
-              </div>
-              <div>
-                <strong>Payment verification</strong>
-                <span>GCash and EastWest transfer with receipt upload and status tracking.</span>
-              </div>
-              <div>
-                <strong>Vehicle tracking</strong>
-                <span>Monitor current location, trip status, pickup point, destination, and ETA.</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="info-stack">
-            <img src="./assets/requirements.jpg" alt="AAV rental requirements poster" />
-            <div class="quote-card">
-              <strong>AI Customer Assistant</strong>
-              <p>Answers vehicle availability, rental requirements, pricing, booking steps, payments, policies, and FAQs.</p>
-            </div>
-          </div>
-        </section>
-
         <section class="section" id="process">
           <div class="container">
             <div class="section-heading reveal">
@@ -408,12 +426,12 @@
             <div class="payment-grid">
               <article class="payment-card reveal">
                 <span>GCash</span>
-                <h3>GCash Payment Accepted</h3>
+                <h3>GCash Payment<br>Accepted</h3>
                 <p>Customers may pay through GCash using the QR code provided in the customer dashboard.</p>
               </article>
               <article class="payment-card reveal">
                 <span>Bank Payment</span>
-                <h3>Bank Transfer Accepted</h3>
+                <h3>Bank Transfer<br>Accepted</h3>
                 <p>Customers may pay through bank payment using the instructions provided in the customer dashboard.</p>
               </article>
             </div>
@@ -426,7 +444,9 @@
 
         <section class="booking-cta section-dark">
           <div class="container cta-card reveal">
-            <p class="eyebrow">Book Now</p>
+            <p class="eyebrow" style="width:100%; max-width:none; text-align:center;">
+              Book Now CTA
+            </p>
             <h2>Ready to hit the road?</h2>
             <p>Book your preferred vehicle with AAV Car Rental Services today.</p>
             <button class="btn btn-primary" data-route="register" type="button">Book Now</button>
@@ -441,11 +461,7 @@
               <p>Open the official location link below for directions.</p>
               <a class="btn btn-primary" href="https://maps.app.goo.gl/8GsbYtCA1DXPVuLNA" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
             </div>
-            <div class="map-card reveal" aria-label="Stylized location map">
-              <span class="road road-one"></span>
-              <span class="road road-two"></span>
-              <span class="map-pin">AAV</span>
-            </div>
+            <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d30899.285133615533!2d121.0252374!3d14.5184883!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397c90048f82181%3A0x79a63d71f84c9c24!2sAAV%20CAR%20RENTAL%20SERVICE!5e0!3m2!1sen!2sph!4v1788009239944!5m2!1sen!2sph" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
           </div>
         </section>
 
@@ -470,13 +486,8 @@
         <section class="auth-card">
           <div class="auth-art">
             <img src="./assets/aav-logo.jpg" alt="AAV logo" />
-            <h1>Welcome back.</h1>
-            <p>Use a demo account to open the Admin, Employee, or Customer dashboard.</p>
-            <div class="credential-box">
-              <span>admin@aavrental.com · Admin@123</span>
-              <span>employee@aavrental.com · Employee@123</span>
-              <span>customer@aavrental.com · Customer@123</span>
-            </div>
+            <h1 id="loginWelcomeTitle">Welcome back.</h1>
+            <p id="loginWelcomeText">Sign in to your customer account to manage your bookings.</p>
           </div>
 
 
@@ -484,7 +495,7 @@
             <button type="button" class="back-home-link" data-route="landing">
               ← Back to Home
             </button>
-            <h2>Login</h2>
+            <h2 id="loginFormTitle">Customer Login</h2>
             <label>Email<input id="loginEmail" type="email" value="customer@aavrental.com" required /></label>
             <label>Password<input id="loginPassword" type="password" value="Customer@123" required /></label>
             <div class="form-row">
@@ -498,7 +509,12 @@
               </button>
             </div>
             <button class="primary full" type="submit">Login</button>
-            <p>New customer? <button class="link-button" data-route="register" type="button">Create an account</button></p>
+            <p id="customerRegisterLink">
+              New customer?
+              <button class="link-button" data-route="register" type="button">
+                Create an account
+              </button>
+            </p>
           </form>
         </section>
       </main>
@@ -577,14 +593,15 @@
               Verify OTP
             </button>
 
-            <p>
+            <p id="otpResendText">
               Didn't receive the code?
               <button
                 class="link-button"
-                data-route="forgot-password"
+                id="resendOtpBtn"
                 type="button"
+                disabled
               >
-                Send Again
+                Resend in 60s
               </button>
             </p>
           </form>
@@ -828,6 +845,23 @@
           </p>
         </div>
 
+        <div class="chat-suggestions">
+          <button type="button" onclick="useChatSuggestion('What vehicles are available?')">
+            Available vehicles
+          </button>
+
+          <button type="button" onclick="useChatSuggestion('What are the rental requirements?')">
+            Rental requirements
+          </button>
+
+          <button type="button" onclick="useChatSuggestion('What are the payment methods?')">
+            Payment methods
+          </button>
+
+          <button type="button" onclick="useChatSuggestion('How do I book a vehicle?')">
+            How to book
+          </button>
+        </div>
 
         <form id="chatForm" class="chat-form">
           <input id="chatInput" placeholder="What SUVs are available?" />
@@ -843,7 +877,6 @@
           <h2>AAV Car Rental Services</h2>
           <p>QUALITY WHEELS, LOW BILLS!</p>
           <span>Affordable • Reliable • Comfortable Car Rentals</span>
-          <span>GCash: 09999118689 · Abigail De Mesa</span>
         </div>
         <div>
           <h3>Navigation</h3>
@@ -862,7 +895,143 @@
       <p class="copyright">© 2026 AAV Car Rental Services. All Rights Reserved.</p>
     </footer>
 
+    <!-- Landing Page Vehicle Details Modal -->
+    <div
+      class="modal"
+      id="carModal"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalTitle"
+    >
+      <div class="modal-backdrop" data-close-modal></div>
+
+      <article class="modal-panel" role="document">
+
+        <button
+          class="modal-close"
+          type="button"
+          data-close-modal
+          aria-label="Close vehicle details"
+        >
+          ×
+        </button>
+
+        <img
+          id="modalImage"
+          src="./assets/toyota-vios.jpg"
+          alt=""
+        />
+
+        <div class="modal-content">
+          <p class="eyebrow">Vehicle Details</p>
+
+          <h2 id="modalTitle">Toyota Vios</h2>
+
+          <div id="modalRates" class="modal-rates"></div>
+
+          <button
+            class="btn btn-primary"
+            type="button"
+            data-route="login"
+          >
+            Book Now
+          </button>
+        </div>
+
+      </article>
+    </div>
+
     <button class="back-to-top" id="backToTop" type="button" aria-label="Back to top">↑</button>
+
+    <!-- Record Cash Payment Modal -->
+    <div id="cashPaymentModal" class="cash-modal">
+      <div class="cash-modal-card">
+
+        <div class="cash-modal-header">
+          <div>
+            <small>CASH PAYMENT</small>
+            <h2>Record Cash Payment</h2>
+          </div>
+
+          <button
+            type="button"
+            class="cash-modal-close"
+            onclick="closeCashPaymentModal()"
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div class="cash-modal-body">
+
+          <div class="cash-payment-info">
+            <div>
+              <span>Booking</span>
+              <strong id="cashBookingId">—</strong>
+            </div>
+
+            <div>
+              <span>Customer</span>
+              <strong id="cashCustomerName">—</strong>
+            </div>
+
+            <div>
+              <span>Remaining Balance</span>
+              <strong id="cashRemainingBalance">₱0.00</strong>
+            </div>
+          </div>
+
+          <form id="cashPaymentForm">
+
+            <input
+              type="hidden"
+              id="cashPaymentBookingId"
+            >
+
+            <input
+              type="hidden"
+              id="cashPaymentRemaining"
+            >
+
+            <label>
+              Cash Amount Received
+              <input
+                type="number"
+                id="cashPaymentAmount"
+                min="1"
+                step="0.01"
+                required
+              >
+            </label>
+
+            <p class="form-help">
+              Enter the actual amount received from the customer.
+            </p>
+
+            <div class="cash-modal-actions">
+              <button
+                type="button"
+                class="secondary"
+                onclick="closeCashPaymentModal()"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                class="primary"
+              >
+                Confirm Cash Payment
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>
