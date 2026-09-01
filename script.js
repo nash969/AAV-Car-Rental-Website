@@ -1084,6 +1084,19 @@ function setView(id) {
     siteFooter.style.display = id === "landing" ? "" : "none";
   }
 
+  const chatFab = document.querySelector("#chatFab");
+  const chatWindow = document.querySelector("#chatWindow");
+
+  if (chatFab) {
+    chatFab.style.display = id === "portal" && currentRole === "customer"
+      ? ""
+      : "none";
+  }
+
+  if (chatWindow && id !== "portal") {
+    chatWindow.classList.remove("open");
+  }
+
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
