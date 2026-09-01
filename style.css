@@ -1057,6 +1057,15 @@ p { color: var(--muted); line-height: 1.7; }
   gap: clamp(36px, 6vw, 86px);
   align-items: center;
 }
+.hero-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+  margin-bottom: 22px;
+}
 .hero-copy > p { max-width: 650px; font-size: 1.08rem; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 30px 0 24px; }
 .hero-points { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -1589,6 +1598,7 @@ textarea { min-height: 92px; padding-block: 12px; resize: vertical; }
   .section { padding: 72px 0; }
   #landing h1 { font-size: 3.2rem; }
   #landing h2 { font-size: 2.25rem; }
+  .hero-logo { width: 76px; height: 76px; margin-bottom: 16px; }
   .hero-visual img, .image-panel img, .vehicle-card img { height: 330px; }
   .floating-card { right: 12px; bottom: 12px; left: 12px; }
   .highlight-grid, .benefit-grid, .steps-grid, .check-list, .vehicle-grid,
