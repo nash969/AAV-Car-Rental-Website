@@ -1,6 +1,7 @@
 const views = document.querySelectorAll(".view");
 const sideNav = document.querySelector("#sideNav");
 const workspaceContent = document.querySelector("#workspaceContent");
+const portalMenuToggle = document.querySelector("#portalMenuToggle");
 const workspaceTitle = document.querySelector("#workspaceTitle");
 const workspaceKicker = document.querySelector("#workspaceKicker");
 const roleLabel = document.querySelector("#roleLabel");
@@ -8,6 +9,18 @@ const API_URL = "https://aav-car-rental-backend.onrender.com/api";
 
 let currentUser = JSON.parse(localStorage.getItem("aavUser") || "null");
 let authToken = localStorage.getItem("aavToken");
+
+portalMenuToggle?.addEventListener("click", () => {
+  const isOpen = sideNav.classList.toggle("mobile-open");
+
+  portalMenuToggle.textContent =
+    isOpen ? "✕" : "☰";
+
+  portalMenuToggle.setAttribute(
+    "aria-expanded",
+    String(isOpen)
+  );
+});
 
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
@@ -88,6 +101,198 @@ function localDateTimeNow() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
+}
+
+function showToast(message, type = "success") {
+  let container = document.querySelector("#toastContainer");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toastContainer";
+    container.className = "toast-container";
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `app-toast ${type}`;
+  toast.setAttribute(
+    "role",
+    type === "error" ? "alert" : "status"
+  );
+
+  const icon =
+    type === "success" ? "✓" :
+    type === "error" ? "!" :
+    type === "warning" ? "!" : "i";
+
+  const title =
+    type === "success" ? "Success" :
+    type === "error" ? "Something went wrong" :
+    type === "warning" ? "Please check" :
+    "Notice";
+
+  toast.innerHTML = `
+    <div class="toast-icon"></div>
+
+    <div class="toast-content">
+      <strong class="toast-title"></strong>
+      <span class="toast-message"></span>
+    </div>
+
+    <button
+      type="button"
+      class="toast-close"
+      aria-label="Close notification">
+      ×
+    </button>
+  `;
+
+  toast.querySelector(".toast-icon").textContent = icon;
+  toast.querySelector(".toast-title").textContent = title;
+  toast.querySelector(".toast-message").textContent =
+    String(message || "");
+
+  container.appendChild(toast);
+
+  toast.querySelector(".toast-close").addEventListener("click", () => {
+    toast.remove();
+  });
+
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+
+    setTimeout(() => {
+      toast.remove();
+    }, 250);
+  }, 3500);
+}
+
+function showConfirmModal({
+  title = "Confirm Action",
+  message = "Are you sure you want to continue?",
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  type = "danger"
+} = {}) {
+  return new Promise(resolve => {
+    const previousActiveElement = document.activeElement;
+
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "confirm-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "confirmModalTitle");
+    modal.setAttribute("aria-describedby", "confirmModalMessage");
+
+    const icon = type === "danger" ? "!" : "?";
+
+    modal.innerHTML = `
+      <div class="confirm-icon ${type}">
+        ${icon}
+      </div>
+
+      <div class="confirm-content">
+        <h3 id="confirmModalTitle"></h3>
+        <p id="confirmModalMessage"></p>
+      </div>
+
+      <div class="confirm-actions">
+        <button
+          type="button"
+          class="secondary confirm-cancel">
+        </button>
+
+        <button
+          type="button"
+          class="primary confirm-submit">
+        </button>
+      </div>
+    `;
+
+    modal.querySelector("#confirmModalTitle").textContent = title;
+    modal.querySelector("#confirmModalMessage").textContent = message;
+
+    const cancelButton = modal.querySelector(".confirm-cancel");
+    const confirmButton = modal.querySelector(".confirm-submit");
+
+    cancelButton.textContent = cancelText;
+    confirmButton.textContent = confirmText;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    let closed = false;
+
+    const close = result => {
+      if (closed) return;
+      closed = true;
+
+      document.removeEventListener("keydown", handleKeydown);
+
+      overlay.classList.remove("show");
+
+      setTimeout(() => {
+        overlay.remove();
+
+        if (
+          previousActiveElement &&
+          typeof previousActiveElement.focus === "function"
+        ) {
+          previousActiveElement.focus();
+        }
+
+        resolve(result);
+      }, 200);
+    };
+
+    const handleKeydown = event => {
+      if (event.key === "Escape") {
+        close(false);
+        return;
+      }
+
+      if (event.key === "Tab") {
+        const focusable = [cancelButton, confirmButton];
+        const currentIndex = focusable.indexOf(document.activeElement);
+
+        if (event.shiftKey) {
+          if (currentIndex <= 0) {
+            event.preventDefault();
+            confirmButton.focus();
+          }
+        } else {
+          if (currentIndex === focusable.length - 1) {
+            event.preventDefault();
+            cancelButton.focus();
+          }
+        }
+      }
+    };
+
+    cancelButton.addEventListener("click", () => close(false));
+    confirmButton.addEventListener("click", () => close(true));
+
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) {
+        close(false);
+      }
+    });
+
+    document.addEventListener("keydown", handleKeydown);
+
+    requestAnimationFrame(() => {
+      overlay.classList.add("show");
+      cancelButton.focus();
+    });
+  });
 }
 
 function logout() {
@@ -265,17 +470,21 @@ async function editCustomerBooking(bookingId) {
   } catch (error) {
     console.error("Edit booking error:", error);
 
-    alert(
-      error.message ||
-      "Unable to load this booking for editing."
+    showToast(
+      error.message || "Unable to load this booking for editing.",
+      "error"
     );
   }
 }
 
 async function cancelCustomerBooking(bookingId) {
-  const confirmed = confirm(
-    `Are you sure you want to cancel Booking BK-${bookingId}? This action cannot be undone.`
-  );
+  const confirmed = await showConfirmModal({
+    title: "Cancel Booking",
+    message: `Are you sure you want to cancel Booking BK-${bookingId}? This action cannot be undone.`,
+    confirmText: "Cancel Booking",
+    cancelText: "Keep Booking",
+    type: "danger"
+  });
 
   if (!confirmed) return;
 
@@ -285,11 +494,6 @@ async function cancelCustomerBooking(bookingId) {
       {
         method: "PATCH"
       }
-    );
-
-    alert(
-      response.message ||
-      "Booking cancelled successfully."
     );
 
     // Clear cached booking/payment data
@@ -305,12 +509,17 @@ async function cancelCustomerBooking(bookingId) {
     // Reload My Bookings
     await renderPanel("my-bookings");
 
+    showToast(
+      response.message || "Booking cancelled successfully.",
+      "success"
+    );
+
   } catch (error) {
     console.error("Cancel booking error:", error);
 
-    alert(
-      error.message ||
-      "Unable to cancel this booking."
+    showToast(
+      error.message || "Unable to cancel this booking.",
+      "error"
     );
   }
 }
@@ -536,7 +745,10 @@ async function viewCustomerRequirements(customerId) {
     `;
 
   } catch (error) {
-    alert(error.message);
+    showToast(
+      error.message || "Unable to load customer requirements.",
+      "error"
+    );
   }
 }
 
@@ -569,20 +781,26 @@ async function viewCustomerDocument(customerId, type) {
     }, 60000);
 
   } catch (error) {
-    alert(error.message);
+    showToast(
+      error.message || "Unable to open customer document.",
+      "error"
+    );
   }
 }
 
 async function reviewCustomerVerification(customerId, status) {
   try {
-    const actionText =
-      status === "verified"
-        ? "verify this customer"
-        : "reject this customer";
+    const isVerify = status === "verified";
 
-    const confirmed = confirm(
-      `Are you sure you want to ${actionText}?`
-    );
+    const confirmed = await showConfirmModal({
+      title: isVerify ? "Verify Customer" : "Reject Customer",
+      message: isVerify
+        ? "Are you sure you want to verify this customer?"
+        : "Are you sure you want to reject this customer's verification?",
+      confirmText: isVerify ? "Verify Customer" : "Reject Customer",
+      cancelText: "Cancel",
+      type: isVerify ? "warning" : "danger"
+    });
 
     if (!confirmed) return;
 
@@ -593,16 +811,22 @@ async function reviewCustomerVerification(customerId, status) {
       })
     });
 
-    alert(
-      status === "verified"
-        ? "Customer verified successfully."
-        : "Customer verification rejected."
-    );
-
     await renderPanel("customers");
 
+    showToast(
+      isVerify
+        ? "Customer verified successfully."
+        : "Customer verification rejected.",
+      isVerify ? "success" : "warning"
+    );
+
   } catch (error) {
-    alert(error.message);
+    console.error("Customer verification error:", error);
+
+    showToast(
+      error.message || "Unable to update customer verification.",
+      "error"
+    );
   }
 }
 
@@ -764,7 +988,85 @@ function selectBookingVehicle(carId) {
 
 
 function icon(id) {
-  return `<svg aria-hidden="true"><use href="#${id}"></use></svg>`;
+  const icons = {
+    "i-home": `
+      <path d="M3 11.5 12 4l9 7.5"></path>
+      <path d="M5 10.5V20h14v-9.5"></path>
+      <path d="M9 20v-6h6v6"></path>
+    `,
+
+    "i-car": `
+      <path d="M5 17h14"></path>
+      <path d="M6 17v2"></path>
+      <path d="M18 17v2"></path>
+      <path d="M4 13l2-5h12l2 5"></path>
+      <path d="M4 13h16v4H4z"></path>
+      <circle cx="7" cy="15" r="1"></circle>
+      <circle cx="17" cy="15" r="1"></circle>
+    `,
+
+    "i-file": `
+      <path d="M6 3h9l3 3v15H6z"></path>
+      <path d="M14 3v4h4"></path>
+      <path d="M9 12h6"></path>
+      <path d="M9 16h6"></path>
+    `,
+
+    "i-card": `
+      <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+      <path d="M3 10h18"></path>
+      <path d="M7 15h4"></path>
+    `,
+
+    "i-chat": `
+      <path d="M4 5h16v11H9l-5 4z"></path>
+      <path d="M8 10h.01"></path>
+      <path d="M12 10h.01"></path>
+      <path d="M16 10h.01"></path>
+    `,
+
+    "i-bell": `
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+      <path d="M10 21h4"></path>
+    `,
+
+    "i-user": `
+      <circle cx="12" cy="8" r="4"></circle>
+      <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
+    `,
+
+    "i-log-out": `
+      <path d="M10 17l5-5-5-5"></path>
+      <path d="M15 12H3"></path>
+      <path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"></path>
+    `,
+
+    "i-chart": `
+      <path d="M4 20V10"></path>
+      <path d="M10 20V4"></path>
+      <path d="M16 20v-7"></path>
+      <path d="M22 20H2"></path>
+    `,
+
+    "i-map": `
+      <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"></path>
+      <path d="M9 3v15"></path>
+      <path d="M15 6v15"></path>
+    `
+  };
+
+  return `
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+      ${icons[id] || icons["i-file"]}
+    </svg>
+  `;
 }
 
 
@@ -812,65 +1114,97 @@ document.addEventListener("click", event => {
       editingCarId = null;
     }
 
+    if (window.innerWidth <= 720) {
+      sideNav.classList.remove("mobile-open");
+
+      if (portalMenuToggle) {
+        portalMenuToggle.textContent = "☰";
+        portalMenuToggle.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+      }
+    }
+
     renderPanel(panel);
   }
 });
 
 
 document.querySelector("#loginForm").addEventListener("submit", async function (event) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const email = document.querySelector("#loginEmail").value;
-    const password = document.querySelector("#loginPassword").value;
+  const email = document.querySelector("#loginEmail").value;
+  const password = document.querySelector("#loginPassword").value;
 
-    try {
-        const response = await fetch(`${API_URL}/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({
-                email: email,
-                password: password
-            })
-        });
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password
+      })
+    });
 
-        const data = await response.json();
+    const data = await response.json();
 
-        if (response.ok) {
+    if (response.ok) {
 
-        // Restrict login based on selected portal
-          if (
-            selectedLoginType === "customer" &&
-            data.user.role !== "customer"
-          ) {
-            alert("This account is for Staff Login. Please use the Staff Login option.");
-            return;
-          }
+      // Restrict login based on selected portal
+      if (
+        selectedLoginType === "customer" &&
+        data.user.role !== "customer"
+      ) {
+        showToast(
+          "This account is for Staff Login. Please use the Staff Login option.",
+          "warning"
+        );
+        return;
+      }
 
-          if (
-            selectedLoginType === "staff" &&
-            !["admin", "employee"].includes(data.user.role)
-          ) {
-            alert("This account is for Customer Login. Please use the Customer Login option.");
-            return;
-          }
+      if (
+        selectedLoginType === "staff" &&
+        !["admin", "employee"].includes(data.user.role)
+      ) {
+        showToast(
+          "This account is for Customer Login. Please use the Customer Login option.",
+          "warning"
+        );
+        return;
+      }
 
-            currentUser = data.user;
-            authToken = data.token;
-            localStorage.setItem("aavUser", JSON.stringify(currentUser));
-            localStorage.setItem("aavToken", authToken);
-            alert("Login successful!");
-            openPortal(data.user.role);
-        } else {
-            alert(data.message);
-        }
+      currentUser = data.user;
+      authToken = data.token;
 
-    } catch (error) {
-        console.error(error);
-        alert("Cannot connect to the server.");
+      localStorage.setItem("aavUser", JSON.stringify(currentUser));
+      localStorage.setItem("aavToken", authToken);
+
+      await openPortal(data.user.role);
+
+      showToast(
+        `Welcome back, ${data.user.name}!`,
+        "success"
+      );
+
+    } else {
+      showToast(
+        data.message || "Invalid email or password.",
+        "error"
+      );
     }
+
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      "Cannot connect to the server. Please try again.",
+      "error"
+    );
+  }
 });
 
 document.querySelector("#registerForm").addEventListener("submit", async function (event) {
@@ -886,7 +1220,10 @@ document.querySelector("#registerForm").addEventListener("submit", async functio
   const passwordConfirmation = document.querySelector("#registerPasswordConfirmation").value;
 
   if (password !== passwordConfirmation) {
-    alert("Passwords do not match.");
+    showToast(
+      "Passwords do not match. Please check both password fields.",
+      "warning"
+    );
     return;
   }
 
@@ -906,7 +1243,10 @@ document.querySelector("#registerForm").addEventListener("submit", async functio
 
     console.log("Registration response:", response);
 
-    alert("Account created successfully. You can now log in.");
+    showToast(
+      "Account created successfully. You can now log in.",
+      "success"
+    );
 
     form.reset();
 
@@ -916,7 +1256,10 @@ document.querySelector("#registerForm").addEventListener("submit", async functio
 
     console.error("Registration error:", error);
 
-    alert(error.message);
+    showToast(
+      error.message || "Unable to create your account. Please try again.",
+      "error"
+    );
   }
 });
 
@@ -1068,13 +1411,20 @@ document.querySelector("#resetPasswordForm").addEventListener("submit", async fu
   const confirmPassword = document.querySelector("#confirmNewPassword").value;
 
   if (!resetEmail) {
-    alert("Password reset session expired. Please request a new OTP.");
+    showToast(
+      "Password reset session expired. Please request a new OTP.",
+      "warning"
+    );
+
     setView("forgot-password");
     return;
   }
 
   if (password !== confirmPassword) {
-    alert("Passwords do not match.");
+    showToast(
+      "Passwords do not match. Please check both password fields.",
+      "warning"
+    );
     return;
   }
 
@@ -1088,8 +1438,6 @@ document.querySelector("#resetPasswordForm").addEventListener("submit", async fu
       })
     });
 
-    alert(response.message || "Password updated successfully!");
-
     resetEmail = null;
 
     document.querySelector("#resetPasswordForm").reset();
@@ -1098,14 +1446,35 @@ document.querySelector("#resetPasswordForm").addEventListener("submit", async fu
 
     setView("login");
 
+    showToast(
+      response.message || "Password updated successfully! You can now log in.",
+      "success"
+    );
+
   } catch (error) {
     console.error("Reset password error:", error);
-    alert(error.message);
+
+    showToast(
+      error.message || "Unable to reset your password. Please try again.",
+      "error"
+    );
   }
 });
 
 async function openPortal(role) {
   currentRole = role;
+
+  const chatFab = document.querySelector("#chatFab");
+  const chatWindow = document.querySelector("#chatWindow");
+
+  if (chatFab) {
+    chatFab.style.display = role === "customer" ? "" : "none";
+  }
+
+  if (chatWindow && role !== "customer") {
+    chatWindow.classList.remove("open");
+  }
+
   await getUnreadNotificationCount();
   roleLabel.textContent = currentUser?.name || role.charAt(0).toUpperCase() + role.slice(1);
 
@@ -1221,9 +1590,15 @@ async function saveVehicle(event) {
     console.log("Vehicle saved:", response);
 
     if (editingCarId) {
-      alert("Vehicle updated successfully!");
+      showToast(
+        "Vehicle updated successfully.",
+        "success"
+      );
     } else {
-      alert("Vehicle added successfully!");
+      showToast(
+        "Vehicle added successfully.",
+        "success"
+      );
     }
 
     editingCarId = null;
@@ -1238,7 +1613,10 @@ async function saveVehicle(event) {
 
     console.error("Error saving vehicle:", error);
 
-    alert(error.message || "Failed to save vehicle.");
+    showToast(
+      error.message || "Failed to save vehicle.",
+      "error"
+    );
   }
 } 
 
@@ -1609,30 +1987,37 @@ async function adminVehicleCards() {
 }
 
 async function deleteVehicle(carId, carName) {
-
-  const confirmed = confirm(
-    `Are you sure you want to delete ${carName}?`
-  );
+  const confirmed = await showConfirmModal({
+    title: "Delete Vehicle",
+    message: `Are you sure you want to delete ${carName}? This action cannot be undone.`,
+    confirmText: "Delete Vehicle",
+    cancelText: "Keep Vehicle",
+    type: "danger"
+  });
 
   if (!confirmed) return;
 
   try {
-
     await apiFetch(`/cars/${carId}`, {
       method: "DELETE"
     });
-
-    alert(`${carName} deleted successfully.`);
 
     await getCars(true);
 
     await renderPanel("vehicle-management");
 
-  } catch (error) {
+    showToast(
+      `${carName} deleted successfully.`,
+      "success"
+    );
 
+  } catch (error) {
     console.error("Error deleting vehicle:", error);
 
-    alert(error.message || "Failed to delete vehicle.");
+    showToast(
+      error.message || "Failed to delete vehicle.",
+      "error"
+    );
   }
 }
 
@@ -1645,7 +2030,10 @@ async function editVehicle(carId) {
   );
 
   if (!car) {
-    alert("Vehicle not found.");
+    showToast(
+      "Vehicle not found.",
+      "error"
+    );
     return;
   }
 
@@ -1900,11 +2288,13 @@ async function charts(cars = null, payments = null) {
           style="
             background:
               conic-gradient(
-                #111 ${availablePercent}%,
+                #f4510b ${availablePercent}%,
                 #ddd ${availablePercent}% 100%
               );
           "
-        ></div>
+        >
+          <span class="donut-value">${Math.round(availablePercent)}%</span>
+        </div>
 
         <div class="form-help">
           Available: ${availablePercent}% ·
@@ -1926,14 +2316,93 @@ function adminCharts(payments, cars, bookings) {
 
   const availablePercent = (available / total) * 100;
 
+  const approvedPayments = payments.filter(
+    payment => payment.status === "approved"
+  );
+
+  const monthlyRevenue = {};
+
+  approvedPayments.forEach(payment => {
+    const date = new Date(payment.created_at);
+
+    const key = date.toLocaleDateString("en-PH", {
+      month: "short",
+      year: "numeric"
+    });
+
+    monthlyRevenue[key] =
+      (monthlyRevenue[key] || 0) + Number(payment.amount || 0);
+  });
+
+  const revenueEntries = Object.entries(monthlyRevenue);
+
+  const maxRevenue = Math.max(
+    ...revenueEntries.map(([, amount]) => amount),
+    1
+  );
+
   return `
     <div class="dashboard-grid">
 
       <section class="chart-card">
         <h3>Monthly Revenue Chart</h3>
-        <p class="form-help">
-          Revenue chart will use approved payment records.
-        </p>
+
+        ${
+          revenueEntries.length
+            ? `
+              <div class="dashboard-chart-wrapper">
+
+                <div class="dashboard-revenue-y-axis">
+                  <span>${formatPeso(maxRevenue)}</span>
+                  <span>${formatPeso(maxRevenue * 0.75)}</span>
+                  <span>${formatPeso(maxRevenue * 0.50)}</span>
+                  <span>${formatPeso(maxRevenue * 0.25)}</span>
+                  <span>₱0</span>
+                </div>
+
+                <div class="dashboard-chart-area">
+
+                  <div class="dashboard-chart-grid">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+
+                  <div class="dashboard-revenue-bars">
+                    ${revenueEntries.map(([month, amount]) => `
+                      <div class="dashboard-revenue-item">
+
+                        <div class="dashboard-revenue-value">
+                          ${formatPeso(amount)}
+                        </div>
+
+                        <div class="dashboard-revenue-track">
+                          <div
+                            class="dashboard-revenue-fill"
+                            style="height: ${(amount / maxRevenue) * 100}%;">
+                          </div>
+                        </div>
+
+                        <div class="dashboard-revenue-month">
+                          ${month}
+                        </div>
+
+                      </div>
+                    `).join("")}
+                  </div>
+
+                </div>
+
+              </div>
+            `
+            : `
+              <p class="form-help">
+                No approved revenue data yet.
+              </p>
+            `
+        }
       </section>
 
       <section class="chart-card">
@@ -1954,6 +2423,26 @@ function adminCharts(payments, cars, bookings) {
             <span>Availability Rate</span>
             <strong>${availablePercent.toFixed(0)}%</strong>
           </div>
+        </div>
+
+        <div
+          class="dashboard-availability-donut"
+          style="
+            background: conic-gradient(
+              var(--orange) 0% ${availablePercent}%,
+              #e5e7eb ${availablePercent}% 100%
+            );
+          "
+        >
+          <div class="dashboard-availability-center">
+            <strong>${availablePercent.toFixed(0)}%</strong>
+            <span>Available</span>
+          </div>
+        </div>
+
+        <div class="dashboard-availability-summary">
+          Available: ${availablePercent.toFixed(0)}% ·
+          Unavailable: ${(100 - availablePercent).toFixed(0)}%
         </div>
 
       </section>
@@ -2088,6 +2577,7 @@ async function maintenancePanel() {
                       ${
                         initialized
                           ? `
+                          <div class="maintenance-actions">
                            ${
                               !vehicle.has_ongoing_maintenance
                                 ? `
@@ -2132,6 +2622,7 @@ async function maintenancePanel() {
                               onclick="openMaintenanceHistory(${vehicle.id})">
                               View History
                             </button>
+                          </div>
                           `
                           : `
                             ${
@@ -3327,7 +3818,7 @@ const panels = {
         }
       </button>
 
-      <p id="availabilityMessage" style="color:red; margin-top:10px;"></p>
+      <p id="availabilityMessage" class="booking-status-message wide"></p>
 
     </div>
 
@@ -3413,9 +3904,7 @@ const panels = {
     ).length;
 
     const activeRentals = bookings.filter(booking =>
-      ["confirmed", "ongoing"].includes(
-        booking.status?.toLowerCase()
-      )
+      booking.status?.toLowerCase() === "ongoing"
     ).length;
 
     const availableVehicles = cars.filter(car =>
@@ -3727,9 +4216,7 @@ const panels = {
       ).length;
 
       const activeRentals = bookings.filter(booking =>
-        ["confirmed", "ongoing"].includes(
-          booking.status?.toLowerCase()
-        )
+        booking.status?.toLowerCase() === "ongoing"
       ).length;
 
       const pendingPayments = payments.filter(payment =>
@@ -4217,9 +4704,9 @@ async function saveSystemSettings(event) {
     settingsCache = response.settings;
     settingsCacheTime = Date.now();
 
-    alert(
-      response.message ||
-      "Settings updated successfully."
+    showToast(
+      response.message || "Settings updated successfully.",
+      "success"
     );
 
     await renderPanel("settings");
@@ -4228,9 +4715,9 @@ async function saveSystemSettings(event) {
 
     console.error("Failed to update settings:", error);
 
-    alert(
-      error.message ||
-      "Failed to update settings."
+    showToast(
+      error.message || "Failed to update settings.",
+      "error"
     );
   }
 }
@@ -4592,112 +5079,6 @@ async function openCashPaymentBookings() {
       getPayments(true)
     ]);
 
-    const eligibleBookings = bookings.filter(booking => {
-
-      const bookingPayments = payments.filter(payment =>
-        Number(payment.booking_id) === Number(booking.id)
-      );
-
-      const approvedPaid = bookingPayments
-        .filter(payment => payment.status === "approved")
-        .reduce(
-          (total, payment) => total + Number(payment.amount || 0),
-          0
-        );
-
-      const remainingBalance =
-        Number(booking.total_price || 0) - approvedPaid;
-
-      return (
-        booking.status === "confirmed" &&
-        approvedPaid > 0 &&
-        remainingBalance > 0
-      );
-    });
-
-    if (!eligibleBookings.length) {
-      alert("No bookings currently have a remaining cash balance.");
-      return;
-    }
-
-    workspaceTitle.textContent = "Record Cash Payment";
-
-    workspaceContent.innerHTML = `
-      <section class="panel">
-        <h3>Select Booking</h3>
-
-        <div class="mini-list">
-          ${eligibleBookings.map(booking => {
-
-            const approvedPaid = payments
-              .filter(payment =>
-                Number(payment.booking_id) === Number(booking.id) &&
-                payment.status === "approved"
-              )
-              .reduce(
-                (total, payment) =>
-                  total + Number(payment.amount || 0),
-                0
-              );
-
-            const remainingBalance =
-              Number(booking.total_price || 0) - approvedPaid;
-
-            const customerName =
-              booking.user?.name || "Customer";
-
-            const vehicleName = booking.car
-              ? `${capitalize(booking.car.brand)} ${capitalize(booking.car.model)}`
-              : "Vehicle unavailable";
-
-            return `
-              <div>
-                <span>
-                  Booking #${booking.id} ·
-                  ${customerName} ·
-                  ${vehicleName}
-                </span>
-
-                <strong>
-                  Remaining: ${formatPeso(remainingBalance)}
-                </strong>
-
-                <button
-                  class="primary small"
-                  type="button"
-                  onclick="recordCashPayment(
-                    ${booking.id},
-                    ${remainingBalance},
-                    '${customerName.replace(/'/g, "\\'")}'
-                  )">
-                  Record Cash
-                </button>
-              </div>
-            `;
-          }).join("")}
-        </div>
-
-        <button
-          class="secondary"
-          type="button"
-          onclick="renderPanel('payments')">
-          Back to Payments
-        </button>
-      </section>
-    `;
-
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-async function openCashPaymentBookings() {
-  try {
-    const [bookings, payments] = await Promise.all([
-      getBookings(true),
-      getPayments(true)
-    ]);
-
     const eligibleBookings = bookings
       .map(booking => {
         const approvedPaid = payments
@@ -4837,7 +5218,10 @@ async function openCashPaymentBookings() {
 
   } catch (error) {
     console.error("Failed to load cash payment bookings:", error);
-    alert(error.message || "Failed to load bookings.");
+    showToast(
+      error.message || "Failed to load cash payment bookings.",
+      "error"
+    );
   }
 }
 
@@ -4889,13 +5273,17 @@ document.querySelector("#cashPaymentForm")?.addEventListener("submit", async fun
     document.querySelector("#cashCustomerName").textContent.trim();
 
   if (!amount || amount <= 0) {
-    alert("Please enter a valid cash amount.");
+    showToast(
+      "Please enter a valid cash amount.",
+      "warning"
+    );
     return;
   }
 
   if (amount > remainingBalance) {
-    alert(
-      `Cash payment cannot exceed the remaining balance of ${formatPeso(remainingBalance)}.`
+    showToast(
+      `Cash payment cannot exceed the remaining balance of ${formatPeso(remainingBalance)}.`,
+      "warning"
     );
     return;
   }
@@ -4932,9 +5320,9 @@ document.querySelector("#cashPaymentForm")?.addEventListener("submit", async fun
   } catch (error) {
     console.error("Cash payment failed:", error);
 
-    alert(
-      error.message ||
-      "Failed to record cash payment."
+    showToast(
+      error.message || "Failed to record cash payment.",
+      "error"
     );
   }
 });
@@ -5074,7 +5462,10 @@ async function viewEmployeePayment(paymentId) {
     );
 
     if (!payment) {
-      alert("Payment record not found.");
+      showToast(
+        "Payment record not found.",
+        "error"
+      );
       return;
     }
 
@@ -5200,7 +5591,10 @@ async function viewEmployeePayment(paymentId) {
     `;
 
   } catch (error) {
-    alert(error.message);
+    showToast(
+      error.message || "Unable to process the payment.",
+      "error"
+    );
   }
 }
 
@@ -5262,28 +5656,57 @@ async function submitPayment(event) {
 }
 
 async function reviewPayment(paymentId, status) {
-  const reviewNote = status === "rejected" ? prompt("Why is this payment being rejected? This note will be shown to the customer.") : prompt("Optional approval note for the customer:") || "";
-  if (status === "rejected" && !reviewNote?.trim()) return;
+  const reviewNote =
+    status === "approved"
+      ? "Payment verified and approved."
+      : "Payment rejected.";
+
   try {
-    await apiFetch(`/payments/${paymentId}/review`, { method: "PATCH", body: JSON.stringify({ status, review_note: reviewNote }) });
+    await apiFetch(`/payments/${paymentId}/review`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+        review_note: reviewNote
+      })
+    });
+
     await getPayments(true);
     await getBookings(true);
-    alert(`Payment ${status}.`);
+
+    showToast(
+      status === "approved"
+        ? "Payment approved successfully."
+        : "Payment rejected successfully.",
+      status === "approved" ? "success" : "warning"
+    );
+
     renderPanel("payments");
+
   } catch (error) {
-    alert(error.message);
+    console.error("Payment review error:", error);
+
+    showToast(
+      error.message || "Unable to update payment status. Please try again.",
+      "error"
+    );
   }
 }
 
 async function updateRentalStatus(bookingId, status) {
   try {
-    const actionText = status === "ongoing"
-      ? "start this rental"
-      : "complete this rental";
-
-    const confirmed = confirm(
-      `Are you sure you want to ${actionText}?`
-    );
+    const confirmed = await showConfirmModal({
+      title: status === "ongoing"
+        ? "Start Rental"
+        : "Complete Rental",
+      message: status === "ongoing"
+        ? "Are you sure you want to start this rental?"
+        : "Are you sure you want to complete this rental?",
+      confirmText: status === "ongoing"
+        ? "Start Rental"
+        : "Complete Rental",
+      cancelText: "Cancel",
+      type: "warning"
+    });
 
     if (!confirmed) return;
 
@@ -5297,16 +5720,22 @@ async function updateRentalStatus(bookingId, status) {
     await getBookings(true);
     await getCars(true);
 
-    alert(
+    showToast(
       status === "ongoing"
         ? "Rental started successfully."
-        : "Rental completed successfully."
+        : "Rental completed successfully.",
+      "success"
     );
 
     renderPanel("rentals");
 
   } catch (error) {
-    alert(error.message);
+    console.error("Rental status update error:", error);
+
+    showToast(
+      error.message || "Unable to update the rental status. Please try again.",
+      "error"
+    );
   }
 }
 
@@ -5320,7 +5749,10 @@ async function viewChatDetails(logId) {
     );
 
     if (!log) {
-      alert("Chat log not found.");
+      showToast(
+        "Chat log not found.",
+        "error"
+      );
       return;
     }
 
@@ -5400,9 +5832,9 @@ async function viewChatDetails(logId) {
 
     console.error("Failed to load chat details:", error);
 
-    alert(
-      error.message ||
-      "Unable to load chat details."
+    showToast(
+      error.message || "Unable to load chat details.",
+      "error"
     );
   }
 }
@@ -5414,7 +5846,10 @@ async function showPaymentProof(paymentId) {
     const url = URL.createObjectURL(await response.blob());
     window.open(url, "_blank", "noopener");
   } catch (error) {
-    alert(error.message);
+    showToast(
+      error.message || "Unable to load the payment proof.",
+      "error"
+    );
   }
 }
 
@@ -5686,7 +6121,10 @@ async function openNotificationDetails(notificationId) {
     );
 
     if (!notification) {
-      alert("Notification not found.");
+      showToast(
+        "Notification not found.",
+        "error"
+      );
       return;
     }
 
@@ -5875,7 +6313,10 @@ async function openNotificationDetails(notificationId) {
       error
     );
 
-    alert("Unable to open notification details.");
+    showToast(
+      "Unable to open notification details.",
+      "error"
+    );
   }
 }
 
@@ -6188,15 +6629,15 @@ function profilePanel(role) {
 
             <h4>Required Documents</h4>
 
-            <div class="form-grid">
+            <div class="profile-documents">
 
               <div>
                 <strong>Government ID</strong>
                 <p>
                   ${
                     governmentIdSubmitted
-                      ? "✅ Submitted"
-                      : "❌ Not submitted"
+                      ? `<span class="document-status submitted">✓ Submitted</span>`
+                      : `<span class="document-status missing">Not Submitted</span>`
                   }
                 </p>
               </div>
@@ -6206,8 +6647,8 @@ function profilePanel(role) {
                 <p>
                   ${
                     driverLicenseSubmitted
-                      ? "✅ Submitted"
-                      : "❌ Not submitted"
+                      ? `<span class="document-status submitted">✓ Submitted</span>`
+                      : `<span class="document-status missing">Not Submitted</span>`
                   }
                 </p>
               </div>
@@ -6217,8 +6658,8 @@ function profilePanel(role) {
                 <p>
                   ${
                     selfieIdSubmitted
-                      ? "✅ Submitted"
-                      : "❌ Not submitted"
+                      ? `<span class="document-status submitted">✓ Submitted</span>`
+                      : `<span class="document-status missing">Not Submitted</span>`
                   }
                 </p>
               </div>
@@ -6646,17 +7087,17 @@ async function checkAvailability() {
     if (!result.available) {
 
       message.textContent =
-        "❌ This vehicle is already reserved for the selected date and time. Please choose another schedule.";
+        "This vehicle is already reserved for the selected date and time. Please choose another schedule.";
 
-      message.style.color = "crimson";
+      message.className = "booking-status-message unavailable wide";
       submitBtn.disabled = true;
 
     } else {
 
       message.textContent =
-        "✅ This vehicle is available for the selected date and time.";
+        "This vehicle is available for the selected date and time.";
 
-      message.style.color = "green";
+      message.className = "booking-status-message available wide";
       submitBtn.disabled = false;
     }
 
