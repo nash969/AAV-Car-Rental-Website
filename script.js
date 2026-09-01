@@ -342,6 +342,24 @@ function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function getVehicleImage(car) {
+  const model = (car.model || "").toLowerCase();
+
+  if (model === "vios") {
+    return "assets/toyota-vios.jpg";
+  }
+
+  if (model === "veloz") {
+    return "assets/toyota-veloz.jpg";
+  }
+
+  if (car.image?.startsWith("/storage/")) {
+    return `https://aav-car-rental-backend.onrender.com${car.image}`;
+  }
+
+  return car.image || "";
+}
+
 function bookingStatusBadge(status) {
   const normalizedStatus =
     (status || "pending").toLowerCase();
@@ -1244,13 +1262,7 @@ async function vehicleCards() {
      cars.map(car =>
       vehicleCard(
         car.id,
-        car.image
-          ? (
-              car.image.startsWith("/storage/")
-                ? `http://127.0.0.1:8000${car.image}`
-                : car.image
-            )
-          : "",
+        getVehicleImage(car),
         capitalize(car.brand) + " " + capitalize(car.model),
         capitalize(car.brand),
         capitalize(car.transmission),
@@ -1318,13 +1330,7 @@ async function employeeVehicleCards() {
     <div class="vehicle-grid" id="employeeVehicleGrid">
       ${cars.map(car => {
 
-        const image = car.image
-          ? (
-              car.image.startsWith("/storage/")
-                ? `http://127.0.0.1:8000${car.image}`
-                : car.image
-            )
-          : "";
+        const image = getVehicleImage(car);
 
         const name =
           `${capitalize(car.brand)} ${capitalize(car.model)}`;
@@ -1452,13 +1458,7 @@ function renderEmployeeVehicleCards(cars) {
 
   vehicleGrid.innerHTML = cars.map(car => {
 
-    const image = car.image
-      ? (
-          car.image.startsWith("/storage/")
-            ? `http://127.0.0.1:8000${car.image}`
-            : car.image
-        )
-      : "";
+    const image = getVehicleImage(car);
 
     const name =
       `${capitalize(car.brand)} ${capitalize(car.model)}`;
@@ -1589,13 +1589,7 @@ async function adminVehicleCards() {
       ${cars.map(car =>
         adminVehicleCard(
           car.id,
-          car.image
-            ? (
-                car.image.startsWith("/storage/")
-                  ? `http://127.0.0.1:8000${car.image}`
-                  : car.image
-              )
-            : "",
+          getVehicleImage(car),
           capitalize(car.brand) + " " + capitalize(car.model),
           capitalize(car.brand),
           capitalize(car.transmission),
