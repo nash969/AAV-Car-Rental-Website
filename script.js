@@ -296,6 +296,9 @@ function showConfirmModal({
 }
 
 function logout() {
+  // Save the role before clearing the logged-in user
+  const loggedOutRole = currentUser?.role || currentRole;
+
   localStorage.removeItem("aavUser");
   localStorage.removeItem("aavToken");
 
@@ -314,6 +317,15 @@ function logout() {
   myBookingsCache = null;
   myBookingsCacheTime = 0;
 
+  // Staff returns to Staff Login
+  if (["admin", "employee"].includes(loggedOutRole)) {
+    window.location.hash = "staff-login";
+    setView("staff-login");
+    return;
+  }
+
+  // Customer returns to public landing page
+  window.location.hash = "";
   setView("landing");
 }
 
@@ -1107,6 +1119,7 @@ document.addEventListener("click", event => {
   if (route) {
     if (route === "landing") setView("landing");
     if (route === "login") setView("login");
+    if (route === "staff-login") setView("staff-login");
     if (route === "register") setView("register");
     if (route === "forgot-password") setView("forgot-password");
     if (route === "verify-otp") setView("verify-otp");
@@ -1167,28 +1180,14 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
 
     if (response.ok) {
 
-      // Restrict login based on selected portal
-      if (
-        selectedLoginType === "customer" &&
-        data.user.role !== "customer"
-      ) {
-        showToast(
-          "This account is for Staff Login. Please use the Staff Login option.",
-          "warning"
-        );
-        return;
-      }
-
-      if (
-        selectedLoginType === "staff" &&
-        !["admin", "employee"].includes(data.user.role)
-      ) {
-        showToast(
-          "This account is for Customer Login. Please use the Customer Login option.",
-          "warning"
-        );
-        return;
-      }
+      // Customer Login is for customer accounts only
+    if (data.user.role !== "customer") {
+      showToast(
+        "This account is for authorized staff. Please use the Staff Login.",
+        "warning"
+      );
+      return;
+    }
 
       currentUser = data.user;
       authToken = data.token;
@@ -1209,6 +1208,66 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
         "error"
       );
     }
+
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      "Cannot connect to the server. Please try again.",
+      "error"
+    );
+  }
+});
+
+document.querySelector("#staffLoginForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const email = document.querySelector("#staffLoginEmail").value;
+  const password = document.querySelector("#staffLoginPassword").value;
+
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      showToast(
+        data.message || "Invalid email or password.",
+        "error"
+      );
+      return;
+    }
+
+    if (!["admin", "employee"].includes(data.user.role)) {
+      showToast(
+        "This login is only for authorized Admin and Employee accounts.",
+        "warning"
+      );
+      return;
+    }
+
+    currentUser = data.user;
+    authToken = data.token;
+
+    localStorage.setItem("aavUser", JSON.stringify(currentUser));
+    localStorage.setItem("aavToken", authToken);
+
+    await openPortal(data.user.role);
+
+    showToast(
+      `Welcome back, ${data.user.name}!`,
+      "success"
+    );
 
   } catch (error) {
     console.error(error);
@@ -7536,4 +7595,9 @@ function updateLoginMode() {
       customerRegisterLink.style.display = "";
     }
   }
+}
+
+// Direct Staff Login URL
+if (window.location.hash === "#staff-login") {
+  setView("staff-login");
 }

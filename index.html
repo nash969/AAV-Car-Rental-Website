@@ -50,25 +50,13 @@
             <a href="#requirements">Requirements</a>
             <a href="#contact">Contact</a>
 
-            <div class="login-dropdown">
-              <button
-                class="btn btn-ghost btn-sm login-dropdown-btn"
-                type="button"
-                id="loginDropdownBtn"
-              >
-                Log In
-              </button>
-
-              <div class="login-dropdown-menu" id="loginDropdownMenu">
-                <button type="button" id="navCustomerLogin">
-                  Customer Login
-                </button>
-
-                <button type="button" id="navStaffLogin">
-                  Staff Login
-                </button>
-              </div>
-            </div>
+            <button
+              class="btn btn-ghost btn-sm"
+              type="button"
+              data-route="login"
+            >
+              Log In
+            </button>
 
             <button class="btn btn-secondary btn-sm" type="button" data-route="register">
               Sign Up
@@ -515,6 +503,43 @@
                 Create an account
               </button>
             </p>
+          </form>
+        </section>
+      </main>
+
+      <main id="staff-login" class="view auth-view">
+        <section class="auth-card">
+          <div class="auth-art">
+            <img src="./assets/aav-logo.jpg" alt="AAV logo" />
+            <h1>Welcome back.</h1>
+            <p>Sign in using your authorized Admin or Employee account.</p>
+          </div>
+
+          <form class="auth-form" id="staffLoginForm">
+            <h2>Staff Login</h2>
+
+            <label>
+              Email
+              <input
+                id="staffLoginEmail"
+                type="email"
+                placeholder="staff@aavrental.com"
+                required
+              />
+            </label>
+
+            <label>
+              Password
+              <input
+                id="staffLoginPassword"
+                type="password"
+                required
+              />
+            </label>
+
+            <button class="primary full" type="submit">
+              Login
+            </button>
           </form>
         </section>
       </main>
