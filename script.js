@@ -324,6 +324,20 @@ function logout() {
     return;
   }
 
+  const loginEmail = document.querySelector("#loginEmail");
+  const loginPassword = document.querySelector("#loginPassword");
+
+  const rememberedEmail =
+    localStorage.getItem("aavRememberedEmail");
+
+  if (loginEmail) {
+    loginEmail.value = rememberedEmail || "";
+  }
+
+  if (loginPassword) {
+    loginPassword.value = "";
+  }
+
   // Customer returns to public landing page
   window.location.hash = "";
   setView("landing");
@@ -1085,6 +1099,32 @@ function icon(id) {
 function setView(id) {
   views.forEach(view => view.classList.toggle("active", view.id === id));
 
+  if (id === "login") {
+    const rememberedEmail =
+      localStorage.getItem("aavRememberedEmail");
+
+    const emailInput =
+      document.querySelector("#loginEmail");
+
+    const passwordInput =
+      document.querySelector("#loginPassword");
+
+    const rememberCheckbox =
+      document.querySelector("#rememberMe");
+
+    if (emailInput) {
+      emailInput.value = rememberedEmail || "";
+    }
+
+    if (rememberCheckbox) {
+      rememberCheckbox.checked = Boolean(rememberedEmail);
+    }
+
+    if (passwordInput) {
+      passwordInput.value = "";
+    }
+  }
+
   const siteHeader = document.querySelector("#siteHeader");
   const siteFooter = document.querySelector("footer");
 
@@ -1160,8 +1200,10 @@ document.addEventListener("click", event => {
 document.querySelector("#loginForm").addEventListener("submit", async function (event) {
   event.preventDefault();
 
-  const email = document.querySelector("#loginEmail").value;
+  const email = document.querySelector("#loginEmail").value.trim();
   const password = document.querySelector("#loginPassword").value;
+  const rememberMe =
+    document.querySelector("#rememberMe")?.checked || false;
 
   try {
     const response = await fetch(`${API_URL}/login`, {
@@ -1194,6 +1236,13 @@ document.querySelector("#loginForm").addEventListener("submit", async function (
 
       localStorage.setItem("aavUser", JSON.stringify(currentUser));
       localStorage.setItem("aavToken", authToken);
+
+      // Remember customer email only
+      if (rememberMe) {
+        localStorage.setItem("aavRememberedEmail", email);
+      } else {
+        localStorage.removeItem("aavRememberedEmail");
+      }
 
       await openPortal(data.user.role);
 
@@ -1536,6 +1585,14 @@ document.querySelector("#resetPasswordForm").addEventListener("submit", async fu
 async function openPortal(role) {
   currentRole = role;
 
+  const topNotificationButton =
+    document.querySelector('.top-actions [data-panel="notifications"]');
+
+  if (topNotificationButton) {
+    topNotificationButton.style.display =
+      role === "customer" ? "" : "none";
+  }
+
   const chatFab = document.querySelector("#chatFab");
   const chatWindow = document.querySelector("#chatWindow");
 
@@ -1547,7 +1604,12 @@ async function openPortal(role) {
     chatWindow.classList.remove("open");
   }
 
-  await getUnreadNotificationCount();
+  if (role === "customer") {
+    await getUnreadNotificationCount();
+  } else {
+    unreadNotifications = 0;
+  }
+  
   roleLabel.textContent = currentUser?.name || role.charAt(0).toUpperCase() + role.slice(1);
 
   sideNav.innerHTML = roleMenus[role].map(([id, label, iconId]) => `
@@ -1699,14 +1761,40 @@ async function vehicleCards() {
 
   return `
   <div class="filters">
-    <select><option>Vehicle Type</option><option>SUV</option><option>Sedan</option></select>
-    <select><option>Price Range</option><option>₱1,500 - ₱2,500</option><option>₱3,000 - ₱5,000</option></select>
-    <select><option>Transmission</option><option>Automatic</option><option>Manual</option></select>
-    <select><option>Fuel</option><option>Gasoline</option><option>Diesel</option></select>
-    <select><option>Availability</option><option>Available</option><option>Reserved</option></select>
+
+    <select id="customerVehicleType" onchange="filterCustomerVehicles()">
+      <option value="">Vehicle Type</option>
+      <option value="suv">SUV</option>
+      <option value="sedan">Sedan</option>
+    </select>
+
+    <select id="customerPriceRange" onchange="filterCustomerVehicles()">
+      <option value="">Price Range</option>
+      <option value="1500-2500">₱1,500 - ₱2,500</option>
+      <option value="2501-5000">₱2,501 - ₱5,000</option>
+    </select>
+
+    <select id="customerTransmission" onchange="filterCustomerVehicles()">
+      <option value="">Transmission</option>
+      <option value="automatic">Automatic</option>
+      <option value="manual">Manual</option>
+    </select>
+
+    <select id="customerFuel" onchange="filterCustomerVehicles()">
+      <option value="">Fuel</option>
+      <option value="gasoline">Gasoline</option>
+      <option value="diesel">Diesel</option>
+    </select>
+
+    <select id="customerAvailability" onchange="filterCustomerVehicles()">
+      <option value="">Availability</option>
+      <option value="available">Available</option>
+      <option value="reserved">Reserved</option>
+    </select>
+
   </div>
 
-  <div class="vehicle-grid">
+  <div class="vehicle-grid" id="customerVehicleGrid">
 
     ${
      cars.map(car =>
@@ -1727,6 +1815,120 @@ async function vehicleCards() {
     }
 
   </div>`;
+}
+
+async function filterCustomerVehicles() {
+  const cars = await getCars();
+
+  const type =
+    document.querySelector("#customerVehicleType")?.value || "";
+
+  const priceRange =
+    document.querySelector("#customerPriceRange")?.value || "";
+
+  const transmission =
+    document.querySelector("#customerTransmission")?.value || "";
+
+  const fuel =
+    document.querySelector("#customerFuel")?.value || "";
+
+  const availability =
+    document.querySelector("#customerAvailability")?.value || "";
+
+  const filteredCars = cars.filter(car => {
+
+    const carType =
+      (car.vehicle_type || "").toLowerCase();
+
+    const carTransmission =
+      (car.transmission || "").toLowerCase();
+
+    const carFuel =
+      (car.fuel_type || "").toLowerCase();
+
+    const carAvailability =
+      car.available ? "available" : "reserved";
+
+    const carPrice =
+      car.rates && car.rates.length > 0
+        ? Math.min(...car.rates.map(rate => Number(rate.price)))
+        : Number(car.price_per_day || 0);
+
+    const matchesType =
+      !type || carType === type;
+
+    const matchesTransmission =
+      !transmission || carTransmission === transmission;
+
+    const matchesFuel =
+      !fuel || carFuel === fuel;
+
+    const matchesAvailability =
+      !availability || carAvailability === availability;
+
+    let matchesPrice = true;
+
+    if (priceRange === "1500-2500") {
+      matchesPrice =
+        carPrice >= 1500 && carPrice <= 2500;
+    }
+
+    if (priceRange === "2501-5000") {
+      matchesPrice =
+        carPrice >= 2501 && carPrice <= 5000;
+    }
+
+    return (
+      matchesType &&
+      matchesPrice &&
+      matchesTransmission &&
+      matchesFuel &&
+      matchesAvailability
+    );
+  });
+
+  renderCustomerVehicleCards(filteredCars);
+}
+
+function renderCustomerVehicleCards(cars) {
+
+  const vehicleGrid =
+    document.querySelector("#customerVehicleGrid");
+
+  if (!vehicleGrid) return;
+
+  if (cars.length === 0) {
+    vehicleGrid.innerHTML = `
+      <section class="panel">
+        <p>No vehicles match the selected filters.</p>
+      </section>
+    `;
+    return;
+  }
+
+  vehicleGrid.innerHTML = cars.map(car => {
+
+    const price =
+      car.rates && car.rates.length > 0
+        ? "Starts at ₱" +
+          Math.min(
+            ...car.rates.map(rate => Number(rate.price))
+          ).toLocaleString("en-PH")
+        : "Rate unavailable";
+
+    return vehicleCard(
+      car.id,
+      getVehicleImage(car),
+      capitalize(car.brand) + " " + capitalize(car.model),
+      capitalize(car.brand),
+      capitalize(car.transmission),
+      capitalize(car.fuel_type),
+      car.seats + " seats",
+      price,
+      car.available ? "Available" : "Reserved"
+    );
+
+  }).join("");
 }
 
 async function employeeVehicleCards() {
@@ -2027,14 +2229,40 @@ async function adminVehicleCards() {
 
   return `
     <div class="filters">
-      <select><option>Vehicle Type</option></select>
-      <select><option>Price Range</option></select>
-      <select><option>Transmission</option></select>
-      <select><option>Fuel</option></select>
-      <select><option>Availability</option></select>
+
+      <select id="adminVehicleType" onchange="filterAdminVehicles()">
+        <option value="">Vehicle Type</option>
+        <option value="suv">SUV</option>
+        <option value="sedan">Sedan</option>
+      </select>
+
+      <select id="adminPriceRange" onchange="filterAdminVehicles()">
+        <option value="">Price Range</option>
+        <option value="1500-2500">₱1,500 - ₱2,500</option>
+        <option value="2501-5000">₱2,501 - ₱5,000</option>
+      </select>
+
+      <select id="adminTransmission" onchange="filterAdminVehicles()">
+        <option value="">Transmission</option>
+        <option value="automatic">Automatic</option>
+        <option value="manual">Manual</option>
+      </select>
+
+      <select id="adminFuel" onchange="filterAdminVehicles()">
+        <option value="">Fuel</option>
+        <option value="gasoline">Gasoline</option>
+        <option value="diesel">Diesel</option>
+      </select>
+
+      <select id="adminAvailability" onchange="filterAdminVehicles()">
+        <option value="">Availability</option>
+        <option value="available">Available</option>
+        <option value="unavailable">Unavailable</option>
+      </select>
+
     </div>
 
-    <div class="vehicle-grid">
+    <div class="vehicle-grid" id="adminVehicleGrid">
 
       ${cars.map(car =>
         adminVehicleCard(
@@ -2056,6 +2284,128 @@ async function adminVehicleCards() {
 
     </div>
   `;
+}
+
+async function filterAdminVehicles() {
+
+  const cars = await getCars();
+
+  const type =
+    document.querySelector("#adminVehicleType")?.value || "";
+
+  const priceRange =
+    document.querySelector("#adminPriceRange")?.value || "";
+
+  const transmission =
+    document.querySelector("#adminTransmission")?.value || "";
+
+  const fuel =
+    document.querySelector("#adminFuel")?.value || "";
+
+  const availability =
+    document.querySelector("#adminAvailability")?.value || "";
+
+  const filteredCars = cars.filter(car => {
+
+    const carType =
+      (car.vehicle_type || "").toLowerCase();
+
+    const carTransmission =
+      (car.transmission || "").toLowerCase();
+
+    const carFuel =
+      (car.fuel_type || "").toLowerCase();
+
+    const carAvailability =
+      car.available ? "available" : "unavailable";
+
+    const carPrice =
+      car.rates && car.rates.length > 0
+        ? Math.min(
+            ...car.rates.map(rate => Number(rate.price))
+          )
+        : Number(car.price_per_day || 0);
+
+    const matchesType =
+      !type || carType === type;
+
+    const matchesTransmission =
+      !transmission ||
+      carTransmission === transmission;
+
+    const matchesFuel =
+      !fuel || carFuel === fuel;
+
+    const matchesAvailability =
+      !availability ||
+      carAvailability === availability;
+
+    let matchesPrice = true;
+
+    if (priceRange === "1500-2500") {
+      matchesPrice =
+        carPrice >= 1500 &&
+        carPrice <= 2500;
+    }
+
+    if (priceRange === "2501-5000") {
+      matchesPrice =
+        carPrice >= 2501 &&
+        carPrice <= 5000;
+    }
+
+    return (
+      matchesType &&
+      matchesPrice &&
+      matchesTransmission &&
+      matchesFuel &&
+      matchesAvailability
+    );
+  });
+
+  renderAdminVehicleCards(filteredCars);
+}
+
+
+function renderAdminVehicleCards(cars) {
+
+  const vehicleGrid =
+    document.querySelector("#adminVehicleGrid");
+
+  if (!vehicleGrid) return;
+
+  if (cars.length === 0) {
+    vehicleGrid.innerHTML = `
+      <section class="panel">
+        <p>No vehicles match the selected filters.</p>
+      </section>
+    `;
+    return;
+  }
+
+  vehicleGrid.innerHTML = cars.map(car => {
+
+    const price =
+      car.rates && car.rates.length > 0
+        ? "Starts at ₱" +
+          Math.min(
+            ...car.rates.map(rate => Number(rate.price))
+          ).toLocaleString("en-PH")
+        : "Rate unavailable";
+
+    return adminVehicleCard(
+      car.id,
+      getVehicleImage(car),
+      capitalize(car.brand) + " " + capitalize(car.model),
+      capitalize(car.brand),
+      capitalize(car.transmission),
+      capitalize(car.fuel_type),
+      car.seats + " seats",
+      price,
+      car.available ? "Available" : "Unavailable"
+    );
+
+  }).join("");
 }
 
 async function deleteVehicle(carId, carName) {

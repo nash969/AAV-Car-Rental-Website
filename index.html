@@ -20,7 +20,11 @@
         <nav class="navbar" aria-label="Main navigation">
 
           <a class="brand" href="#home" data-route="landing">
-            <span class="brand-mark">AAV</span>
+            <img
+              class="brand-mark"
+              src="./assets/aav-logo.jpg"
+              alt="AAV Car Rental Services logo"
+            />
 
             <span class="brand-text">
               <strong>AAV Car Rental Services</strong>
@@ -76,14 +80,6 @@
           <div class="container hero-grid">
 
             <div class="hero-copy">
-              <img
-                class="hero-logo"
-                src="./assets/aav-logo.jpg"
-                alt="AAV Car Rental Services logo"
-                width="88"
-                height="88"
-              />
-
               <div class="hero-text">
                 <p class="eyebrow">AAV Car Rental Services</p>
 
@@ -494,10 +490,26 @@
               ← Back to Home
             </button>
             <h2 id="loginFormTitle">Customer Login</h2>
-            <label>Email<input id="loginEmail" type="email" value="customer@aavrental.com" required /></label>
-            <label>Password<input id="loginPassword" type="password" value="Customer@123" required /></label>
+            <label>Email</label>
+            <input
+              id="loginEmail"
+              type="email"
+              placeholder="e.g. customer@gmail.com"
+              required
+            >
+            <label>Password</label>
+              <input
+              id="loginPassword"
+              type="password"
+              placeholder="Enter your password"
+              required
+            >
             <div class="form-row">
-              <label class="check"><input type="checkbox" checked /> Remember Me</label>
+              <label class="check">
+                <input type="checkbox" id="rememberMe" />
+                Remember Me
+              </label>
+              
               <button
                 class="link-button"
                 data-route="forgot-password"
