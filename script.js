@@ -5487,10 +5487,19 @@ function updatePaymentBreakdown() {
   }
 
   if (amountInput) {
-    const amountToPay = Math.min(reservation, remaining);
+    const reservationPaid = paid >= reservation;
 
-    amountInput.value = amountToPay;
-    amountInput.max = remaining;
+    if (!reservationPaid) {
+      // First payment: exact reservation fee only
+      amountInput.value = reservation;
+      amountInput.min = reservation;
+      amountInput.max = reservation;
+    } else {
+      // After reservation approval: pay toward remaining balance
+      amountInput.value = remaining;
+      amountInput.min = 1;
+      amountInput.max = remaining;
+    }
   }
 }
 
