@@ -1686,6 +1686,149 @@ async function renderPanel(panel) {
   }
 }
 
+
+function showAddEmployeeForm() {
+  workspaceContent.innerHTML = `
+    <div class="panel-card">
+      <h2>Add Employee</h2>
+      <p>Create a login account for your employee.</p>
+
+      <form onsubmit="saveEmployee(event)">
+        <div style="margin-bottom: 14px;">
+          <label for="employeeName">Full Name</label>
+          <input
+            id="employeeName"
+            name="name"
+            type="text"
+            placeholder="Enter full name"
+            required
+          >
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label for="employeeEmail">Email Address</label>
+          <input
+            id="employeeEmail"
+            name="email"
+            type="email"
+            placeholder="Enter email address"
+            required
+          >
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label for="employeePhone">Mobile Number</label>
+          <input
+            id="employeePhone"
+            name="phone"
+            type="tel"
+            placeholder="Enter mobile number"
+            required
+          >
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label for="employeePassword">Password</label>
+          <input
+            id="employeePassword"
+            name="password"
+            type="password"
+            minlength="8"
+            placeholder="At least 8 characters"
+            required
+          >
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label for="employeePasswordConfirmation">
+            Confirm Password
+          </label>
+          <input
+            id="employeePasswordConfirmation"
+            name="password_confirmation"
+            type="password"
+            minlength="8"
+            placeholder="Re-enter password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="btn-primary">
+          Save Employee
+        </button>
+
+        <button
+          type="button"
+          onclick="renderPanel('employees')"
+        >
+          Cancel
+        </button>
+      </form>
+    </div>
+  `;
+}
+
+async function saveEmployee(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const formData = new FormData(form);
+
+  const name = formData.get("name").trim();
+  const email = formData.get("email").trim();
+  const phone = formData.get("phone").trim();
+  const password = formData.get("password");
+  const passwordConfirmation =
+    formData.get("password_confirmation");
+
+  if (password !== passwordConfirmation) {
+    showToast("Passwords do not match.", "error");
+    return;
+  }
+
+  const saveButton = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving...";
+
+  try {
+    await apiFetch("/employees", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        email,
+        phone,
+        password,
+        password_confirmation: passwordConfirmation
+      })
+    });
+
+    showToast("Employee account created successfully.", "success");
+
+    await renderPanel("employees");
+
+  } catch (error) {
+    console.error("Failed to create employee:", error);
+
+    let message =
+      error.message || "Unable to create employee.";
+
+    if (error.data?.errors) {
+      message = Object.values(error.data.errors)
+        .flat()
+        .join(" ");
+    }
+
+    showToast(message, "error");
+
+    saveButton.disabled = false;
+    saveButton.textContent = "Save Employee";
+  }
+}
+
+
 async function saveVehicle(event) {
   event.preventDefault();
 
@@ -4682,15 +4825,53 @@ const panels = {
       `;
     },
 
+    
     employees: async () => {
-      return table(
-        "Employees",
-        ["Name", "Email", "Mobile", "Role"],
-        [
-          ["—", "No employees found", "—", "—"]
-        ]
-      );
+      try {
+        const employees = await apiFetch("/employees");
+
+        const rows = employees.length
+          ? employees.map(employee => [
+              employee.name,
+              employee.email,
+              employee.phone || "—",
+              employee.role
+            ])
+          : [["—", "No employees found", "—", "—"]];
+
+        return `
+          <div style="margin-bottom: 20px;">
+            <button
+              type="button"
+              onclick="showAddEmployeeForm()"
+              class="btn-primary"
+            >
+              + Add Employee
+            </button>
+          </div>
+
+          ${table(
+            "Employees",
+            ["Name", "Email", "Mobile", "Role"],
+            rows
+          )}
+        `;
+      } catch (error) {
+        console.error("Failed to load employees:", error);
+
+        return `
+          <h3>Employees</h3>
+          <p>Unable to load employees. Please try again.</p>
+          <button
+            type="button"
+            onclick="renderPanel('employees')"
+          >
+            Retry
+          </button>
+        `;
+      }
     },
+
 
     customers: async () => {
 
